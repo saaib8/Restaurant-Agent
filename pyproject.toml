@@ -1,0 +1,36 @@
+[project]
+name = "voice-agent"
+version = "0.1.0"
+description = "Pakistani Restaurant Voice Agent with Phone-based Order System"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    # LiveKit & AI
+    "livekit-agents[silero]~=1.2",
+    "livekit-plugins-deepgram>=0.6",
+    "livekit-plugins-openai>=0.9",
+    "livekit-plugins-cartesia>=0.2",
+    "livekit-plugins-noise-cancellation~=0.2",
+    
+    # Database
+    "motor>=3.3.2",  # Async MongoDB
+    "pymongo>=4.6.1",
+    
+    # HTTP & SSL
+    "aiohttp>=3.9.0",
+    "certifi>=2024.0.0",
+    "httpx>=0.26.0",
+    
+    # Data & Validation
+    "pydantic>=2.5.0",
+    "pydantic[email]>=2.5.0",
+    "email-validator>=2.1.0",
+    "pyyaml>=6.0",
+    
+    # Environment
+    "python-dotenv>=1.1.1",
+    
+    # Optional
+    "tavily-python>=0.3.0",
+    "resend>=2.0.0",
+]
