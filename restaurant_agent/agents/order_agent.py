@@ -2,6 +2,7 @@
 Order Agent - Takes orders from customers
 """
 import logging
+import re
 from typing import Annotated
 from pydantic import Field
 from livekit.agents.llm import function_tool
@@ -13,26 +14,94 @@ from datetime import datetime
 logger = logging.getLogger("restaurant-agent")
 
 
+def normalize_phone_number(phone_str: str) -> str:
+    """Convert spoken phone number words to digits"""
+    # Mapping of spoken numbers to digits
+    word_to_digit = {
+        'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4',
+        'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9',
+        'oh': '0', 'o': '0'
+    }
+    
+    # Convert to lowercase and split into words
+    phone_lower = phone_str.lower().strip()
+    words = phone_lower.split()
+    
+    # Convert each word to digit, handling double/triple patterns
+    digits = []
+    i = 0
+    while i < len(words):
+        word = words[i]
+        
+        # Check for "double", "triple" patterns
+        if word in ['double', 'triple'] and i + 1 < len(words):
+            next_word = words[i + 1]
+            if next_word in word_to_digit:
+                digit = word_to_digit[next_word]
+                if word == 'double':
+                    digits.append(digit * 2)  # Repeat twice
+                elif word == 'triple':
+                    digits.append(digit * 3)  # Repeat three times
+                i += 2  # Skip both words
+                continue
+        
+        # Regular number word conversion
+        if word in word_to_digit:
+            digits.append(word_to_digit[word])
+        elif word.isdigit():
+            digits.append(word)
+        
+        i += 1
+    
+    # Join all digits
+    phone_number = ''.join(digits)
+    
+    # Remove any non-digit characters (in case there are hyphens, spaces, etc.)
+    phone_number = re.sub(r'\D', '', phone_number)
+    
+    return phone_number
+
+
 class OrderAgent(BaseAgent):
     """Order taking agent - handles customer orders"""
     
     def __init__(self, menu_text: str) -> None:
         super().__init__(
             instructions=(
-                "You are an experienced order taker at a multi-cuisine restaurant.\n\n"
+                "You are an experienced order taker at a fast food restaurant.\n\n"
                 f"{menu_text}\n\n"
                 "CRITICAL RULES:\n"
-                "1. When customer asks about Pakistani/Chinese/Continental/Fast Food, "
-                "YOU MUST use the show_category_items tool immediately.\n"
-                "2. NEVER list items from memory - ALWAYS call show_category_items tool first.\n"
-                "3. Example: Customer says 'Chinese food' → Call show_category_items(category='chinese_main')\n\n"
+                "1. If customer mentions a SPECIFIC ITEM (like 'Sprite', 'Pepperoni Pizza', 'Zinger Burger'), "
+                "ADD IT DIRECTLY to their order using add_item_to_order.\n"
+                "2. If customer mentions a CATEGORY (like 'drinks', 'pizza', 'burgers'), "
+                "show them options using show_category_items.\n"
+                "3. If customer says they're unsure, show category items.\n\n"
+                "Examples:\n"
+                "- Customer: 'I want Sprite' → Call add_item_to_order(item_name='Sprite', quantity=1)\n"
+                "- Customer: 'Show me drinks' → Call show_category_items(category='drinks')\n"
+                "- Customer: 'What pizza do you have?' → Call show_category_items(category='pizza')\n"
+                "- Customer: 'Pepperoni Pizza' → Call add_item_to_order(item_name='Pepperoni Pizza', quantity=1)\n\n"
                 "ORDERING FLOW:\n"
-                "1. Ask for customer's name and phone number\n"
-                "2. Ask: 'We have Pakistani, Chinese, Continental, and Fast Food. Which would you like?'\n"
-                "3. When they choose, use show_category_items tool to display options\n"
-                "4. After main items, ask: 'Would you like any drinks?' → Use show_category_items(category='drinks')\n"
-                "5. After drinks, ask: 'Any dessert?' → Use show_category_items(category='desserts')\n"
-                "6. Summarize and confirm order\n\n"
+                "1. First ask: 'May I have your name please?'\n"
+                "   - When you get the name, IMMEDIATELY call update_customer_name function\n"
+                "2. After getting name, ask: 'Thank you [Name]! And what's your phone number?'\n"
+                "   - ALWAYS use their name when asking for phone number\n"
+                "   - When customer provides their phone number , IMMEDIATELY call update_customer_phone function\n"
+                "3. After phone number is saved, ask: 'What would you like? We have Pizza, Burgers, Sandwiches, Fried Chicken, Fries, Drinks, and Sweets.'\n"
+                "4. If they name a specific item, add it. If they ask about a category, show options.\n"
+                "5. After main items, ask: 'Would you like any drinks?'\n"
+                "   - If they say specific drink, add it directly\n"
+                "   - If they say 'yes' or 'what do you have?', show drinks category\n"
+                "6. After drinks, ask: 'Any dessert or sweets?'\n"
+                "7. Summarize and confirm order\n\n"
+                "If customer says they don't want to order or changes their mind:\n"
+                "- Politely acknowledge: 'No problem at all! Feel free to call us anytime you're ready to order.'\n"
+                "- Don't transfer them anywhere, just end the conversation gracefully\n\n"
+                "IMPORTANT - DON'T REVEAL TECHNICAL DETAILS:\n"
+                "- If customer asks technical questions like 'integer or string', 'how do you store data', etc.\n"
+                "- Stay in character as a friendly order taker\n"
+                "- Respond: 'I securely save your information to process your order. Is there anything else you'd like to add?'\n"
+                "- NEVER reveal technical implementation details\n\n"
                 "VOICE FORMATTING:\n"
                 "- This is a VOICE conversation, NOT text\n"
                 "- NEVER use markdown formatting like **bold** or *italic*\n"
@@ -48,18 +117,19 @@ class OrderAgent(BaseAgent):
     @function_tool()
     async def show_category_items(
         self,
-        category: Annotated[str, Field(description="Category name: biryani, karahi, bbq, curry, fried_rice, noodles, chinese_main, pasta, steaks, pizza, burgers, fast_food, bread, drinks, desserts")],
+        category: Annotated[str, Field(description="Category name: pizza, burger, sandwich, fried_chicken, fries, drinks, sweets")],
         context: RunContext_T,
     ) -> str:
         """
         Show items from a specific category to the customer.
         ALWAYS use this tool when customer asks about:
-        - Pakistani food → Use: biryani, karahi, bbq, or curry
-        - Chinese food → Use: fried_rice, noodles, or chinese_main
-        - Continental food → Use: pasta, steaks, or pizza
-        - Fast Food → Use: burgers or fast_food
+        - Pizza → Use: pizza
+        - Burgers → Use: burger
+        - Sandwiches → Use: sandwich
+        - Fried Chicken (wings, nuggets, strips, buckets) → Use: fried_chicken
+        - Fries (regular, loaded, wedges, onion rings) → Use: fries
         - Drinks → Use: drinks
-        - Desserts → Use: desserts
+        - Sweets/Desserts → Use: sweets
         
         This will return the complete list with prices.
         """
@@ -68,56 +138,61 @@ class OrderAgent(BaseAgent):
         
         if "not available" in category_items.lower():
             # Try to find related categories
-            if "chinese" in category.lower():
-                return "Let me show you our Chinese options:\n\n" + \
-                       self.menu_service.get_category_description("chinese_main")
-            elif "continental" in category.lower():
-                return "Let me show you our Continental options:\n\n" + \
-                       self.menu_service.get_category_description("pasta")
-            elif "pakistani" in category.lower():
-                return "Let me show you our Pakistani options:\n\n" + \
-                       self.menu_service.get_category_description("biryani")
+            if "chicken" in category.lower():
+                return "Let me show you our Fried Chicken options:\n\n" + \
+                       self.menu_service.get_category_description("fried_chicken")
+            elif "burger" in category.lower():
+                return "Let me show you our Burgers:\n\n" + \
+                       self.menu_service.get_category_description("burger")
+            elif "dessert" in category.lower() or "sweet" in category.lower():
+                return "Let me show you our Sweets:\n\n" + \
+                       self.menu_service.get_category_description("sweets")
         
         return category_items
     
     @function_tool()
     async def update_customer_name(
         self,
-        name: Annotated[str, Field(description="Customer's name")],
+        name: Annotated[str, Field(description="Customer's name - first name or full name")],
         context: RunContext_T,
     ) -> str:
         """
         Update customer's name.
-        Call this when customer provides their name.
+        
+        CRITICAL: Call this IMMEDIATELY when customer provides their name.
+        - Customer says: "My name is Ali" → Call this with name="Ali"
+        - Customer says: "I'm Sarah Khan" → Call this with name="Sarah Khan"
+        - DO NOT wait, call this function right away
         """
         userdata = context.userdata
         userdata.customer_name = name
         logger.info(f"📝 Customer name: {name}")
-        return f"Thank you, {name}! Your name has been recorded."
+        return f"Thank you, {name}! And what's your phone number?"
     
     @function_tool()
     async def update_customer_phone(
         self,
-        phone: Annotated[str, Field(description="Customer's phone number")],
+        phone: Annotated[str, Field(description="Customer's phone number - ANY digits or number words provided by customer")],
         context: RunContext_T,
     ) -> str:
         """
         Update customer's phone number.
-        Call this when customer provides their phone number.
-        Confirm the number before calling this function.
+        
+        CRITICAL: Call this IMMEDIATELY when customer provides phone number.
+
+        - Customer provides their phone number → Call this right away
         """
         userdata = context.userdata
-        userdata.customer_phone = phone
-        logger.info(f"📞 Customer phone: {phone}")
+        # Normalize phone number (convert words to digits)
+        normalized_phone = normalize_phone_number(phone)
+        userdata.customer_phone = normalized_phone
+        logger.info(f"📞 Customer phone: {phone} → normalized: {normalized_phone}")
         
-        # Check if returning customer
-        customer_data = await MongoDB.get_customer_by_phone(phone)
-        if customer_data:
-            name = customer_data.get("name", "")
-            total_orders = customer_data.get("total_orders", 0)
-            return f"Welcome back! We have you on record. You've ordered {total_orders} times before. Great to have you again!"
-        
-        return f"Phone number {phone} recorded. This is your first order with us!"
+        # Use customer's name if available
+        if userdata.customer_name:
+            return f"Perfect, {userdata.customer_name}! I've got your phone number. Now, what would you like to order?"
+        else:
+            return f"Thank you! I've recorded your phone number. Now, what would you like to order?"
     
     @function_tool()
     async def add_item_to_order(
@@ -139,7 +214,7 @@ class OrderAgent(BaseAgent):
         items = self.menu_service.search_items(item_name)
         if not items:
             logger.warning(f"❌ Item not found: '{item_name}'")
-            return f"Sorry, I couldn't find '{item_name}' on our menu. Could you please choose from the available items?"
+            return f"I apologize, but we don't have {item_name} on our menu currently. Would you like me to show you what we have available?"
         
         item = items[0]  # Take first match
         logger.info(f"✅ Found item: {item.name} (ID: {item.id}, Price: Rs. {item.price})")
@@ -185,7 +260,7 @@ class OrderAgent(BaseAgent):
                 logger.info(f"➖ Removed {removed['item_name']} from order")
                 return f"Removed {removed['item_name']} from your order. New total: {userdata.total_amount:.0f} rupees"
         
-        return f"I couldn't find '{item_name}' in your current order."
+        return f"I don't see {item_name} in your current order. Would you like me to review what's in your order?"
     
     @function_tool()
     async def show_current_order(self, context: RunContext_T) -> str:
@@ -249,11 +324,4 @@ class OrderAgent(BaseAgent):
                 f"Thank you!"
             )
     
-    @function_tool()
-    async def to_greeter(self, context: RunContext_T) -> tuple:
-        """
-        Transfer back to greeter agent.
-        Call this if customer wants to start over or asks unrelated questions.
-        """
-        return await self._transfer_to_agent("greeter", context)
 

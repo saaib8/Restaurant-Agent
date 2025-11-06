@@ -8,7 +8,7 @@ from datetime import datetime
 
 class OrderItem(BaseModel):
     """Individual item in an order"""
-    item_id: str
+    item_id: int
     item_name: str
     quantity: int = 1
     price: float
@@ -33,16 +33,16 @@ class Order(BaseModel):
         json_schema_extra = {
             "example": {
                 "phone": "+923001234567",
-                "customer_name": "Ahmed Khan",
+                "customer_name": "John Doe",
                 "items": [
                     {
-                        "item_id": "biryani_chicken",
-                        "item_name": "Chicken Biryani",
+                        "item_id": 1,
+                        "item_name": "Margherita Pizza",
                         "quantity": 2,
-                        "price": 450.0
+                        "price": 899.0
                     }
                 ],
-                "total_amount": 900.0,
+                "total_amount": 1798.0,
                 "status": "pending"
             }
         }

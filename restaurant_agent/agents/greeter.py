@@ -16,19 +16,20 @@ class GreeterAgent(BaseAgent):
     def __init__(self, menu_text: str) -> None:
         super().__init__(
             instructions=(
-                "You are a warm and friendly receptionist at a multi-cuisine restaurant. "
+                "You are a warm and friendly receptionist at a fast food restaurant. "
                 "Greet customers and welcome them warmly.\n\n"
-                f"Our menu:\n{menu_text}\n\n"
                 "Your job is to:\n"
                 "1. Greet the customer warmly\n"
                 "2. Ask if they'd like to place an order\n"
-                "3. Transfer them to the order agent when ready\n\n"
+                "3. If they say YES, transfer them to the order agent\n"
+                "4. If they say NO or they're not interested, politely say goodbye: "
+                "'No problem! Feel free to call us whenever you're hungry. Have a great day!'\n\n"
                 "VOICE FORMATTING:\n"
                 "- This is a VOICE conversation, NOT text\n"
                 "- NEVER use markdown formatting like **bold** or *italic*\n"
                 "- NEVER use special characters: *, #, _, etc.\n"
                 "- Speak naturally, as if talking to someone in person\n\n"
-                "Be friendly, helpful, and professional. Use Pakistani hospitality!"
+                "Be friendly, helpful, and professional!"
             ),
         )
         self.menu_text = menu_text

@@ -27,7 +27,7 @@ class Settings:
     
     # AI APIs
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-    ASSEMBLYAI_API_KEY: str = os.getenv("ASSEMBLYAI_API_KEY", "")
+    DEEPGRAM_API_KEY: str = os.getenv("DEEPGRAM_API_KEY", "")
     CARTESIA_API_KEY: str = os.getenv("CARTESIA_API_KEY", "")
 
 settings = Settings()
