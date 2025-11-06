@@ -73,13 +73,17 @@ async def entrypoint(ctx: JobContext):
     # metadata = json.loads(participant.metadata) if participant.metadata else {}
     # userdata.customer_phone = metadata.get('caller_phone')
     
-    # Create session
+    # Create session with adjusted VAD settings
     session = AgentSession[UserData](
         userdata=userdata,
-        stt="assemblyai",  # AssemblyAI STT (better for accents)
+        stt="deepgram",  # Deepgram STT
         llm="openai/gpt-4o-mini",
         tts="cartesia/sonic-2:9626c31c-bec5-4cca-baa8-f8ba9e84c8bc",
-        vad=silero.VAD.load(),
+        vad=silero.VAD.load(
+            min_speech_duration=0.3,     # Minimum speech duration to detect (seconds)
+            min_silence_duration=0.8,    # Wait longer before cutting (was default 0.5s)
+            padding_duration=0.2,        # Add padding around speech
+        ),
         max_tool_steps=10,
     )
     

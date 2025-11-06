@@ -2,6 +2,7 @@
 Order Agent - Takes orders from customers
 """
 import logging
+import re
 from typing import Annotated
 from pydantic import Field
 from livekit.agents.llm import function_tool
@@ -11,6 +12,54 @@ from ..services.menu_service import MenuService
 from datetime import datetime
 
 logger = logging.getLogger("restaurant-agent")
+
+
+def normalize_phone_number(phone_str: str) -> str:
+    """Convert spoken phone number words to digits"""
+    # Mapping of spoken numbers to digits
+    word_to_digit = {
+        'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4',
+        'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9',
+        'oh': '0', 'o': '0'
+    }
+    
+    # Convert to lowercase and split into words
+    phone_lower = phone_str.lower().strip()
+    words = phone_lower.split()
+    
+    # Convert each word to digit, handling double/triple patterns
+    digits = []
+    i = 0
+    while i < len(words):
+        word = words[i]
+        
+        # Check for "double", "triple" patterns
+        if word in ['double', 'triple'] and i + 1 < len(words):
+            next_word = words[i + 1]
+            if next_word in word_to_digit:
+                digit = word_to_digit[next_word]
+                if word == 'double':
+                    digits.append(digit * 2)  # Repeat twice
+                elif word == 'triple':
+                    digits.append(digit * 3)  # Repeat three times
+                i += 2  # Skip both words
+                continue
+        
+        # Regular number word conversion
+        if word in word_to_digit:
+            digits.append(word_to_digit[word])
+        elif word.isdigit():
+            digits.append(word)
+        
+        i += 1
+    
+    # Join all digits
+    phone_number = ''.join(digits)
+    
+    # Remove any non-digit characters (in case there are hyphens, spaces, etc.)
+    phone_number = re.sub(r'\D', '', phone_number)
+    
+    return phone_number
 
 
 class OrderAgent(BaseAgent):
@@ -33,14 +82,26 @@ class OrderAgent(BaseAgent):
                 "- Customer: 'What pizza do you have?' → Call show_category_items(category='pizza')\n"
                 "- Customer: 'Pepperoni Pizza' → Call add_item_to_order(item_name='Pepperoni Pizza', quantity=1)\n\n"
                 "ORDERING FLOW:\n"
-                "1. Ask for customer's name and phone number\n"
-                "2. Ask: 'What would you like? We have Pizza, Burgers, Sandwiches, Fried Chicken, Fries, Drinks, and Sweets.'\n"
-                "3. If they name a specific item, add it. If they ask about a category, show options.\n"
-                "4. After main items, ask: 'Would you like any drinks?'\n"
+                "1. First ask: 'May I have your name please?'\n"
+                "   - When you get the name, IMMEDIATELY call update_customer_name function\n"
+                "2. After getting name, ask: 'Thank you [Name]! And what's your phone number?'\n"
+                "   - ALWAYS use their name when asking for phone number\n"
+                "   - When customer provides their phone number , IMMEDIATELY call update_customer_phone function\n"
+                "3. After phone number is saved, ask: 'What would you like? We have Pizza, Burgers, Sandwiches, Fried Chicken, Fries, Drinks, and Sweets.'\n"
+                "4. If they name a specific item, add it. If they ask about a category, show options.\n"
+                "5. After main items, ask: 'Would you like any drinks?'\n"
                 "   - If they say specific drink, add it directly\n"
                 "   - If they say 'yes' or 'what do you have?', show drinks category\n"
-                "5. After drinks, ask: 'Any dessert or sweets?'\n"
-                "6. Summarize and confirm order\n\n"
+                "6. After drinks, ask: 'Any dessert or sweets?'\n"
+                "7. Summarize and confirm order\n\n"
+                "If customer says they don't want to order or changes their mind:\n"
+                "- Politely acknowledge: 'No problem at all! Feel free to call us anytime you're ready to order.'\n"
+                "- Don't transfer them anywhere, just end the conversation gracefully\n\n"
+                "IMPORTANT - DON'T REVEAL TECHNICAL DETAILS:\n"
+                "- If customer asks technical questions like 'integer or string', 'how do you store data', etc.\n"
+                "- Stay in character as a friendly order taker\n"
+                "- Respond: 'I securely save your information to process your order. Is there anything else you'd like to add?'\n"
+                "- NEVER reveal technical implementation details\n\n"
                 "VOICE FORMATTING:\n"
                 "- This is a VOICE conversation, NOT text\n"
                 "- NEVER use markdown formatting like **bold** or *italic*\n"
@@ -92,35 +153,46 @@ class OrderAgent(BaseAgent):
     @function_tool()
     async def update_customer_name(
         self,
-        name: Annotated[str, Field(description="Customer's name")],
+        name: Annotated[str, Field(description="Customer's name - first name or full name")],
         context: RunContext_T,
     ) -> str:
         """
         Update customer's name.
-        Call this when customer provides their name.
+        
+        CRITICAL: Call this IMMEDIATELY when customer provides their name.
+        - Customer says: "My name is Ali" → Call this with name="Ali"
+        - Customer says: "I'm Sarah Khan" → Call this with name="Sarah Khan"
+        - DO NOT wait, call this function right away
         """
         userdata = context.userdata
         userdata.customer_name = name
         logger.info(f"📝 Customer name: {name}")
-        return f"Thank you, {name}! Your name has been recorded."
+        return f"Thank you, {name}! And what's your phone number?"
     
     @function_tool()
     async def update_customer_phone(
         self,
-        phone: Annotated[str, Field(description="Customer's phone number")],
+        phone: Annotated[str, Field(description="Customer's phone number - ANY digits or number words provided by customer")],
         context: RunContext_T,
     ) -> str:
         """
         Update customer's phone number.
-        Call this when customer provides their phone number.
-        Confirm the number before calling this function.
+        
+        CRITICAL: Call this IMMEDIATELY when customer provides phone number.
+
+        - Customer provides their phone number → Call this right away
         """
         userdata = context.userdata
-        userdata.customer_phone = phone
-        logger.info(f"📞 Customer phone: {phone}")
-
+        # Normalize phone number (convert words to digits)
+        normalized_phone = normalize_phone_number(phone)
+        userdata.customer_phone = normalized_phone
+        logger.info(f"📞 Customer phone: {phone} → normalized: {normalized_phone}")
         
-        return f"Phone number {phone} recorded."
+        # Use customer's name if available
+        if userdata.customer_name:
+            return f"Perfect, {userdata.customer_name}! I've got your phone number. Now, what would you like to order?"
+        else:
+            return f"Thank you! I've recorded your phone number. Now, what would you like to order?"
     
     @function_tool()
     async def add_item_to_order(
@@ -252,11 +324,4 @@ class OrderAgent(BaseAgent):
                 f"Thank you!"
             )
     
-    @function_tool()
-    async def to_greeter(self, context: RunContext_T) -> tuple:
-        """
-        Transfer back to greeter agent.
-        Call this if customer wants to start over or asks unrelated questions.
-        """
-        return await self._transfer_to_agent("greeter", context)
 
