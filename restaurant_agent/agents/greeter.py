@@ -16,9 +16,8 @@ class GreeterAgent(BaseAgent):
     def __init__(self, menu_text: str) -> None:
         super().__init__(
             instructions=(
-                "You are a warm and friendly receptionist at a multi-cuisine restaurant. "
+                "You are a warm and friendly receptionist at a fast food restaurant. "
                 "Greet customers and welcome them warmly.\n\n"
-                f"Our menu:\n{menu_text}\n\n"
                 "Your job is to:\n"
                 "1. Greet the customer warmly\n"
                 "2. Ask if they'd like to place an order\n"
@@ -28,7 +27,7 @@ class GreeterAgent(BaseAgent):
                 "- NEVER use markdown formatting like **bold** or *italic*\n"
                 "- NEVER use special characters: *, #, _, etc.\n"
                 "- Speak naturally, as if talking to someone in person\n\n"
-                "Be friendly, helpful, and professional. Use Pakistani hospitality!"
+                "Be friendly, helpful, and professional!"
             ),
         )
         self.menu_text = menu_text

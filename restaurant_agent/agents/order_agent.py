@@ -19,19 +19,27 @@ class OrderAgent(BaseAgent):
     def __init__(self, menu_text: str) -> None:
         super().__init__(
             instructions=(
-                "You are an experienced order taker at a multi-cuisine restaurant.\n\n"
+                "You are an experienced order taker at a fast food restaurant.\n\n"
                 f"{menu_text}\n\n"
                 "CRITICAL RULES:\n"
-                "1. When customer asks about Pakistani/Chinese/Continental/Fast Food, "
-                "YOU MUST use the show_category_items tool immediately.\n"
-                "2. NEVER list items from memory - ALWAYS call show_category_items tool first.\n"
-                "3. Example: Customer says 'Chinese food' → Call show_category_items(category='chinese_main')\n\n"
+                "1. If customer mentions a SPECIFIC ITEM (like 'Sprite', 'Pepperoni Pizza', 'Zinger Burger'), "
+                "ADD IT DIRECTLY to their order using add_item_to_order.\n"
+                "2. If customer mentions a CATEGORY (like 'drinks', 'pizza', 'burgers'), "
+                "show them options using show_category_items.\n"
+                "3. If customer says they're unsure, show category items.\n\n"
+                "Examples:\n"
+                "- Customer: 'I want Sprite' → Call add_item_to_order(item_name='Sprite', quantity=1)\n"
+                "- Customer: 'Show me drinks' → Call show_category_items(category='drinks')\n"
+                "- Customer: 'What pizza do you have?' → Call show_category_items(category='pizza')\n"
+                "- Customer: 'Pepperoni Pizza' → Call add_item_to_order(item_name='Pepperoni Pizza', quantity=1)\n\n"
                 "ORDERING FLOW:\n"
                 "1. Ask for customer's name and phone number\n"
-                "2. Ask: 'We have Pakistani, Chinese, Continental, and Fast Food. Which would you like?'\n"
-                "3. When they choose, use show_category_items tool to display options\n"
-                "4. After main items, ask: 'Would you like any drinks?' → Use show_category_items(category='drinks')\n"
-                "5. After drinks, ask: 'Any dessert?' → Use show_category_items(category='desserts')\n"
+                "2. Ask: 'What would you like? We have Pizza, Burgers, Sandwiches, Fried Chicken, Fries, Drinks, and Sweets.'\n"
+                "3. If they name a specific item, add it. If they ask about a category, show options.\n"
+                "4. After main items, ask: 'Would you like any drinks?'\n"
+                "   - If they say specific drink, add it directly\n"
+                "   - If they say 'yes' or 'what do you have?', show drinks category\n"
+                "5. After drinks, ask: 'Any dessert or sweets?'\n"
                 "6. Summarize and confirm order\n\n"
                 "VOICE FORMATTING:\n"
                 "- This is a VOICE conversation, NOT text\n"
@@ -48,18 +56,19 @@ class OrderAgent(BaseAgent):
     @function_tool()
     async def show_category_items(
         self,
-        category: Annotated[str, Field(description="Category name: biryani, karahi, bbq, curry, fried_rice, noodles, chinese_main, pasta, steaks, pizza, burgers, fast_food, bread, drinks, desserts")],
+        category: Annotated[str, Field(description="Category name: pizza, burger, sandwich, fried_chicken, fries, drinks, sweets")],
         context: RunContext_T,
     ) -> str:
         """
         Show items from a specific category to the customer.
         ALWAYS use this tool when customer asks about:
-        - Pakistani food → Use: biryani, karahi, bbq, or curry
-        - Chinese food → Use: fried_rice, noodles, or chinese_main
-        - Continental food → Use: pasta, steaks, or pizza
-        - Fast Food → Use: burgers or fast_food
+        - Pizza → Use: pizza
+        - Burgers → Use: burger
+        - Sandwiches → Use: sandwich
+        - Fried Chicken (wings, nuggets, strips, buckets) → Use: fried_chicken
+        - Fries (regular, loaded, wedges, onion rings) → Use: fries
         - Drinks → Use: drinks
-        - Desserts → Use: desserts
+        - Sweets/Desserts → Use: sweets
         
         This will return the complete list with prices.
         """
@@ -68,15 +77,15 @@ class OrderAgent(BaseAgent):
         
         if "not available" in category_items.lower():
             # Try to find related categories
-            if "chinese" in category.lower():
-                return "Let me show you our Chinese options:\n\n" + \
-                       self.menu_service.get_category_description("chinese_main")
-            elif "continental" in category.lower():
-                return "Let me show you our Continental options:\n\n" + \
-                       self.menu_service.get_category_description("pasta")
-            elif "pakistani" in category.lower():
-                return "Let me show you our Pakistani options:\n\n" + \
-                       self.menu_service.get_category_description("biryani")
+            if "chicken" in category.lower():
+                return "Let me show you our Fried Chicken options:\n\n" + \
+                       self.menu_service.get_category_description("fried_chicken")
+            elif "burger" in category.lower():
+                return "Let me show you our Burgers:\n\n" + \
+                       self.menu_service.get_category_description("burger")
+            elif "dessert" in category.lower() or "sweet" in category.lower():
+                return "Let me show you our Sweets:\n\n" + \
+                       self.menu_service.get_category_description("sweets")
         
         return category_items
     
@@ -109,15 +118,9 @@ class OrderAgent(BaseAgent):
         userdata = context.userdata
         userdata.customer_phone = phone
         logger.info(f"📞 Customer phone: {phone}")
+
         
-        # Check if returning customer
-        customer_data = await MongoDB.get_customer_by_phone(phone)
-        if customer_data:
-            name = customer_data.get("name", "")
-            total_orders = customer_data.get("total_orders", 0)
-            return f"Welcome back! We have you on record. You've ordered {total_orders} times before. Great to have you again!"
-        
-        return f"Phone number {phone} recorded. This is your first order with us!"
+        return f"Phone number {phone} recorded."
     
     @function_tool()
     async def add_item_to_order(
@@ -139,7 +142,7 @@ class OrderAgent(BaseAgent):
         items = self.menu_service.search_items(item_name)
         if not items:
             logger.warning(f"❌ Item not found: '{item_name}'")
-            return f"Sorry, I couldn't find '{item_name}' on our menu. Could you please choose from the available items?"
+            return f"I apologize, but we don't have {item_name} on our menu currently. Would you like me to show you what we have available?"
         
         item = items[0]  # Take first match
         logger.info(f"✅ Found item: {item.name} (ID: {item.id}, Price: Rs. {item.price})")
@@ -185,7 +188,7 @@ class OrderAgent(BaseAgent):
                 logger.info(f"➖ Removed {removed['item_name']} from order")
                 return f"Removed {removed['item_name']} from your order. New total: {userdata.total_amount:.0f} rupees"
         
-        return f"I couldn't find '{item_name}' in your current order."
+        return f"I don't see {item_name} in your current order. Would you like me to review what's in your order?"
     
     @function_tool()
     async def show_current_order(self, context: RunContext_T) -> str:

@@ -1,5 +1,5 @@
 """
-Pakistani Restaurant Menu Service
+Fast Food Restaurant Menu Service
 """
 from typing import Dict, List
 from pydantic import BaseModel
@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 class MenuItem(BaseModel):
     """Menu item"""
-    id: str
+    id: int
     name: str
     price: float
     category: str
@@ -21,579 +21,465 @@ class MenuService:
     def get_menu() -> Dict[str, List[MenuItem]]:
         """Get complete restaurant menu"""
         return {
-            # PAKISTANI CUISINE
-            "biryani": [
-                MenuItem(
-                    id="biryani_chicken",
-                    name="Chicken Biryani",
-                    price=450.0,
-                    category="biryani",
-                    description="Aromatic basmati rice with tender chicken"
-                ),
-                MenuItem(
-                    id="biryani_mutton",
-                    name="Mutton Biryani",
-                    price=650.0,
-                    category="biryani",
-                    description="Special mutton biryani with fragrant spices"
-                ),
-                MenuItem(
-                    id="biryani_beef",
-                    name="Beef Biryani",
-                    price=550.0,
-                    category="biryani",
-                    description="Delicious beef biryani"
-                ),
-                MenuItem(
-                    id="biryani_prawn",
-                    name="Prawn Biryani",
-                    price=750.0,
-                    category="biryani",
-                    description="Special seafood biryani with jumbo prawns"
-                ),
-            ],
-            "karahi": [
-                MenuItem(
-                    id="karahi_chicken",
-                    name="Chicken Karahi",
-                    price=1200.0,
-                    category="karahi",
-                    description="Full chicken karahi for 4-5 people"
-                ),
-                MenuItem(
-                    id="karahi_mutton",
-                    name="Mutton Karahi",
-                    price=1800.0,
-                    category="karahi",
-                    description="Premium mutton karahi"
-                ),
-                MenuItem(
-                    id="karahi_white",
-                    name="White Karahi",
-                    price=1400.0,
-                    category="karahi",
-                    description="Creamy white chicken karahi"
-                ),
-            ],
-            "bbq": [
-                MenuItem(
-                    id="bbq_tikka",
-                    name="Chicken Tikka",
-                    price=350.0,
-                    category="bbq",
-                    description="Grilled chicken tikka"
-                ),
-                MenuItem(
-                    id="bbq_malai_boti",
-                    name="Malai Boti",
-                    price=400.0,
-                    category="bbq",
-                    description="Creamy malai boti"
-                ),
-                MenuItem(
-                    id="bbq_seekh_kebab",
-                    name="Seekh Kebab",
-                    price=300.0,
-                    category="bbq",
-                    description="Minced meat seekh kebab"
-                ),
-                MenuItem(
-                    id="bbq_reshmi_kebab",
-                    name="Reshmi Kebab",
-                    price=380.0,
-                    category="bbq",
-                    description="Silky smooth chicken kebabs"
-                ),
-                MenuItem(
-                    id="bbq_beef_tikka",
-                    name="Beef Tikka",
-                    price=420.0,
-                    category="bbq",
-                    description="Tender beef tikka pieces"
-                ),
-            ],
-            "curry": [
-                MenuItem(
-                    id="curry_nihari",
-                    name="Nihari",
-                    price=500.0,
-                    category="curry",
-                    description="Slow-cooked beef stew"
-                ),
-                MenuItem(
-                    id="curry_haleem",
-                    name="Haleem",
-                    price=450.0,
-                    category="curry",
-                    description="Traditional meat and lentil stew"
-                ),
-                MenuItem(
-                    id="curry_korma",
-                    name="Chicken Korma",
-                    price=600.0,
-                    category="curry",
-                    description="Creamy chicken curry"
-                ),
-            ],
-            
-            # CHINESE CUISINE
-            "fried_rice": [
-                MenuItem(
-                    id="rice_chicken",
-                    name="Chicken Fried Rice",
-                    price=350.0,
-                    category="fried_rice",
-                    description="Wok-fried rice with chicken"
-                ),
-                MenuItem(
-                    id="rice_beef",
-                    name="Beef Fried Rice",
-                    price=400.0,
-                    category="fried_rice",
-                    description="Fried rice with beef"
-                ),
-                MenuItem(
-                    id="rice_prawn",
-                    name="Prawn Fried Rice",
-                    price=500.0,
-                    category="fried_rice",
-                    description="Fried rice with prawns"
-                ),
-                MenuItem(
-                    id="rice_vegetable",
-                    name="Vegetable Fried Rice",
-                    price=250.0,
-                    category="fried_rice",
-                    description="Mixed vegetable fried rice"
-                ),
-            ],
-            "noodles": [
-                MenuItem(
-                    id="noodles_chicken_chow_mein",
-                    name="Chicken Chow Mein",
-                    price=380.0,
-                    category="noodles",
-                    description="Stir-fried noodles with chicken"
-                ),
-                MenuItem(
-                    id="noodles_beef_chow_mein",
-                    name="Beef Chow Mein",
-                    price=420.0,
-                    category="noodles",
-                    description="Beef chow mein noodles"
-                ),
-                MenuItem(
-                    id="noodles_vegetable",
-                    name="Vegetable Chow Mein",
-                    price=280.0,
-                    category="noodles",
-                    description="Vegetable noodles"
-                ),
-            ],
-            "chinese_main": [
-                MenuItem(
-                    id="chinese_chicken_manchurian",
-                    name="Chicken Manchurian",
-                    price=450.0,
-                    category="chinese_main",
-                    description="Crispy chicken in spicy sauce"
-                ),
-                MenuItem(
-                    id="chinese_sweet_sour_chicken",
-                    name="Sweet and Sour Chicken",
-                    price=480.0,
-                    category="chinese_main",
-                    description="Tangy sweet and sour chicken"
-                ),
-                MenuItem(
-                    id="chinese_kung_pao",
-                    name="Kung Pao Chicken",
-                    price=500.0,
-                    category="chinese_main",
-                    description="Spicy Szechuan chicken"
-                ),
-                MenuItem(
-                    id="chinese_spring_rolls",
-                    name="Spring Rolls",
-                    price=200.0,
-                    category="chinese_main",
-                    description="Crispy vegetable spring rolls (4 pieces)"
-                ),
-                MenuItem(
-                    id="chinese_chicken_wings",
-                    name="Chinese Style Chicken Wings",
-                    price=350.0,
-                    category="chinese_main",
-                    description="Glazed chicken wings (6 pieces)"
-                ),
-            ],
-            
-            # CONTINENTAL CUISINE
-            "pasta": [
-                MenuItem(
-                    id="pasta_alfredo",
-                    name="Chicken Alfredo Pasta",
-                    price=550.0,
-                    category="pasta",
-                    description="Creamy white sauce pasta with chicken"
-                ),
-                MenuItem(
-                    id="pasta_bolognese",
-                    name="Spaghetti Bolognese",
-                    price=500.0,
-                    category="pasta",
-                    description="Classic meat sauce pasta"
-                ),
-                MenuItem(
-                    id="pasta_carbonara",
-                    name="Pasta Carbonara",
-                    price=520.0,
-                    category="pasta",
-                    description="Creamy pasta with bacon"
-                ),
-                MenuItem(
-                    id="pasta_arrabiata",
-                    name="Penne Arrabiata",
-                    price=450.0,
-                    category="pasta",
-                    description="Spicy tomato sauce pasta"
-                ),
-            ],
-            "steaks": [
-                MenuItem(
-                    id="steak_chicken_grilled",
-                    name="Grilled Chicken Steak",
-                    price=650.0,
-                    category="steaks",
-                    description="Juicy grilled chicken with sides"
-                ),
-                MenuItem(
-                    id="steak_beef",
-                    name="Beef Steak",
-                    price=950.0,
-                    category="steaks",
-                    description="Premium beef steak with vegetables"
-                ),
-                MenuItem(
-                    id="steak_fish",
-                    name="Fish Steak",
-                    price=750.0,
-                    category="steaks",
-                    description="Grilled fish fillet with lemon butter"
-                ),
-            ],
+            # PIZZA
             "pizza": [
                 MenuItem(
-                    id="pizza_margherita",
+                    id=1,
                     name="Margherita Pizza",
-                    price=600.0,
+                    price=899.0,
                     category="pizza",
                     description="Classic cheese and tomato pizza"
                 ),
                 MenuItem(
-                    id="pizza_pepperoni",
+                    id=2,
                     name="Pepperoni Pizza",
-                    price=750.0,
+                    price=1099.0,
                     category="pizza",
-                    description="Loaded with pepperoni"
+                    description="Loaded with pepperoni slices"
                 ),
                 MenuItem(
-                    id="pizza_chicken_tikka",
-                    name="Chicken Tikka Pizza",
-                    price=800.0,
+                    id=3,
+                    name="Barbeq Chicken Pizza",
+                    price=1199.0,
                     category="pizza",
-                    description="Fusion pizza with chicken tikka"
+                    description="Grilled chicken with BBQ sauce"
                 ),
                 MenuItem(
-                    id="pizza_veggie",
+                    id=4,
                     name="Vegetable Pizza",
-                    price=650.0,
+                    price=999.0,
                     category="pizza",
-                    description="Mixed vegetable pizza"
+                    description="Fresh vegetables and cheese"
+                ),
+                MenuItem(
+                    id=5,
+                    name="Supreme Pizza",
+                    price=1299.0,
+                    category="pizza",
+                    description="Loaded with meat and vegetables"
+                ),
+                MenuItem(
+                    id=6,
+                    name="Hawaiian Pizza",
+                    price=1099.0,
+                    category="pizza",
+                    description="Ham and pineapple combination"
                 ),
             ],
             
-            # FAST FOOD
-            "burgers": [
+            # BURGERS
+            "burger": [
                 MenuItem(
-                    id="burger_beef",
-                    name="Beef Burger",
-                    price=350.0,
-                    category="burgers",
-                    description="Classic beef burger with cheese"
+                    id=7,
+                    name="Classic Beef Burger",
+                    price=399.0,
+                    category="burger",
+                    description="Juicy beef patty with cheese"
                 ),
                 MenuItem(
-                    id="burger_chicken",
-                    name="Chicken Burger",
-                    price=300.0,
-                    category="burgers",
-                    description="Crispy chicken burger"
+                    id=8,
+                    name="Double Beef Burger",
+                    price=549.0,
+                    category="burger",
+                    description="Two beef patties with double cheese"
                 ),
                 MenuItem(
-                    id="burger_zinger",
+                    id=9,
+                    name="Crispy Chicken Burger",
+                    price=349.0,
+                    category="burger",
+                    description="Crispy fried chicken fillet"
+                ),
+                MenuItem(
+                    id=10,
+                    name="Grilled Chicken Burger",
+                    price=379.0,
+                    category="burger",
+                    description="Grilled chicken with special sauce"
+                ),
+                MenuItem(
+                    id=11,
                     name="Zinger Burger",
-                    price=320.0,
-                    category="burgers",
-                    description="Spicy chicken zinger"
+                    price=399.0,
+                    category="burger",
+                    description="Spicy crispy chicken burger"
                 ),
                 MenuItem(
-                    id="burger_veggie",
+                    id=12,
                     name="Veggie Burger",
-                    price=250.0,
-                    category="burgers",
-                    description="Vegetarian burger"
+                    price=299.0,
+                    category="burger",
+                    description="Vegetarian patty with fresh veggies"
+                ),
+                MenuItem(
+                    id=13,
+                    name="Fish Burger",
+                    price=369.0,
+                    category="burger",
+                    description="Breaded fish fillet with tartar sauce"
                 ),
             ],
-            "fast_food": [
+            
+            # SANDWICHES
+            "sandwich": [
                 MenuItem(
-                    id="ff_club_sandwich",
+                    id=14,
                     name="Club Sandwich",
-                    price=400.0,
-                    category="fast_food",
-                    description="Triple-decker sandwich"
+                    price=449.0,
+                    category="sandwich",
+                    description="Triple-decker with chicken"
                 ),
                 MenuItem(
-                    id="ff_chicken_nuggets",
-                    name="Chicken Nuggets",
-                    price=280.0,
-                    category="fast_food",
-                    description="Crispy chicken nuggets (8 pieces)"
+                    id=15,
+                    name="Grilled Chicken Sandwich",
+                    price=379.0,
+                    category="sandwich",
+                    description="Grilled chicken with lettuce and mayo"
                 ),
                 MenuItem(
-                    id="ff_french_fries",
-                    name="French Fries",
-                    price=150.0,
-                    category="fast_food",
-                    description="Crispy golden fries"
+                    id=16,
+                    name="Crispy Chicken Sandwich",
+                    price=399.0,
+                    category="sandwich",
+                    description="Crispy chicken with special sauce"
                 ),
                 MenuItem(
-                    id="ff_loaded_fries",
+                    id=17,
+                    name="Steak Sandwich",
+                    price=549.0,
+                    category="sandwich",
+                    description="Tender beef steak with caramelized onions"
+                ),
+                MenuItem(
+                    id=18,
+                    name="Veggie Sandwich",
+                    price=299.0,
+                    category="sandwich",
+                    description="Fresh vegetables with cheese"
+                ),
+                MenuItem(
+                    id=19,
+                    name="Tuna Sandwich",
+                    price=379.0,
+                    category="sandwich",
+                    description="Tuna salad with fresh lettuce"
+                ),
+            ],
+            
+            # FRIED CHICKEN
+            "fried_chicken": [
+                MenuItem(
+                    id=20,
+                    name="6 Piece Fried Chicken",
+                    price=899.0,
+                    category="fried_chicken",
+                    description="6 pieces of crispy fried chicken"
+                ),
+                MenuItem(
+                    id=21,
+                    name="9 Piece Fried Chicken",
+                    price=1299.0,
+                    category="fried_chicken",
+                    description="9 pieces of crispy fried chicken"
+                ),
+                MenuItem(
+                    id=22,
+                    name="12 Piece Fried Chicken",
+                    price=1699.0,
+                    category="fried_chicken",
+                    description="12 pieces of crispy fried chicken"
+                ),
+                MenuItem(
+                    id=23,
+                    name="6 Chicken Wings",
+                    price=449.0,
+                    category="fried_chicken",
+                    description="6 crispy chicken wings"
+                ),
+                MenuItem(
+                    id=24,
+                    name="12 Chicken Wings",
+                    price=799.0,
+                    category="fried_chicken",
+                    description="12 crispy chicken wings"
+                ),
+                MenuItem(
+                    id=25,
+                    name="3 Chicken Strips",
+                    price=349.0,
+                    category="fried_chicken",
+                    description="3 crispy chicken strips"
+                ),
+                MenuItem(
+                    id=26,
+                    name="5 Chicken Strips",
+                    price=549.0,
+                    category="fried_chicken",
+                    description="5 crispy chicken strips"
+                ),
+                MenuItem(
+                    id=27,
+                    name="6 Chicken Nuggets",
+                    price=299.0,
+                    category="fried_chicken",
+                    description="6 crispy chicken nuggets"
+                ),
+                MenuItem(
+                    id=28,
+                    name="9 Chicken Nuggets",
+                    price=399.0,
+                    category="fried_chicken",
+                    description="9 crispy chicken nuggets"
+                ),
+                MenuItem(
+                    id=29,
+                    name="Popcorn Chicken",
+                    price=349.0,
+                    category="fried_chicken",
+                    description="Bite-sized crispy chicken pieces"
+                ),
+            ],
+            
+            # FRIES
+            "fries": [
+                MenuItem(
+                    id=30,
+                    name="Regular Fries",
+                    price=149.0,
+                    category="fries",
+                    description="Crispy golden french fries"
+                ),
+                MenuItem(
+                    id=31,
+                    name="Large Fries",
+                    price=199.0,
+                    category="fries",
+                    description="Large serving of crispy fries"
+                ),
+                MenuItem(
+                    id=32,
+                    name="Cheese Fries",
+                    price=249.0,
+                    category="fries",
+                    description="Fries topped with melted cheese"
+                ),
+                MenuItem(
+                    id=33,
                     name="Loaded Fries",
-                    price=250.0,
-                    category="fast_food",
-                    description="Fries with cheese and toppings"
+                    price=349.0,
+                    category="fries",
+                    description="Fries with cheese, bacon, and special sauce"
                 ),
                 MenuItem(
-                    id="ff_wings",
-                    name="Buffalo Wings",
-                    price=400.0,
-                    category="fast_food",
-                    description="Spicy chicken wings (6 pieces)"
+                    id=34,
+                    name="Curly Fries",
+                    price=229.0,
+                    category="fries",
+                    description="Seasoned curly fries"
+                ),
+                MenuItem(
+                    id=35,
+                    name="Potato Wedges",
+                    price=199.0,
+                    category="fries",
+                    description="Crispy seasoned potato wedges"
+                ),
+                MenuItem(
+                    id=36,
+                    name="Onion Rings",
+                    price=229.0,
+                    category="fries",
+                    description="Crispy breaded onion rings"
                 ),
             ],
             
-            # BREAD
-            "bread": [
-                MenuItem(
-                    id="bread_naan",
-                    name="Naan",
-                    price=30.0,
-                    category="bread",
-                    description="Fresh tandoori naan"
-                ),
-                MenuItem(
-                    id="bread_roti",
-                    name="Roti",
-                    price=20.0,
-                    category="bread",
-                    description="Whole wheat roti"
-                ),
-                MenuItem(
-                    id="bread_paratha",
-                    name="Paratha",
-                    price=40.0,
-                    category="bread",
-                    description="Layered paratha"
-                ),
-                MenuItem(
-                    id="bread_garlic_naan",
-                    name="Garlic Naan",
-                    price=50.0,
-                    category="bread",
-                    description="Naan with garlic butter"
-                ),
-                MenuItem(
-                    id="bread_cheese_naan",
-                    name="Cheese Naan",
-                    price=80.0,
-                    category="bread",
-                    description="Stuffed with cheese"
-                ),
-            ],
-            
-            # ENHANCED DRINKS
+            # DRINKS
             "drinks": [
                 MenuItem(
-                    id="drink_lassi_sweet",
-                    name="Sweet Lassi",
-                    price=120.0,
-                    category="drinks",
-                    description="Chilled sweet yogurt drink"
-                ),
-                MenuItem(
-                    id="drink_lassi_mango",
-                    name="Mango Lassi",
-                    price=150.0,
-                    category="drinks",
-                    description="Mango flavored lassi"
-                ),
-                MenuItem(
-                    id="drink_lassi_salted",
-                    name="Salted Lassi",
-                    price=100.0,
-                    category="drinks",
-                    description="Traditional salted lassi"
-                ),
-                MenuItem(
-                    id="drink_coke",
+                    id=37,
                     name="Coca Cola",
-                    price=80.0,
+                    price=99.0,
                     category="drinks",
-                    description="Chilled Coke"
+                    description="Chilled Coca Cola"
                 ),
                 MenuItem(
-                    id="drink_sprite",
+                    id=38,
+                    name="Pepsi",
+                    price=99.0,
+                    category="drinks",
+                    description="Chilled Pepsi"
+                ),
+                MenuItem(
+                    id=39,
                     name="Sprite",
-                    price=80.0,
+                    price=99.0,
                     category="drinks",
                     description="Lemon-lime soda"
                 ),
                 MenuItem(
-                    id="drink_fanta",
+                    id=40,
                     name="Fanta",
-                    price=80.0,
+                    price=99.0,
                     category="drinks",
                     description="Orange flavored soda"
                 ),
                 MenuItem(
-                    id="drink_water",
+                    id=41,
+                    name="7UP",
+                    price=99.0,
+                    category="drinks",
+                    description="Lemon-lime soda"
+                ),
+                MenuItem(
+                    id=42,
+                    name="Mountain Dew",
+                    price=99.0,
+                    category="drinks",
+                    description="Citrus flavored soda"
+                ),
+                MenuItem(
+                    id=43,
                     name="Mineral Water",
                     price=50.0,
                     category="drinks",
-                    description="Bottled water"
+                    description="Bottled mineral water"
                 ),
                 MenuItem(
-                    id="drink_fresh_lime",
-                    name="Fresh Lime Soda",
-                    price=120.0,
+                    id=44,
+                    name="Lemonade",
+                    price=149.0,
                     category="drinks",
-                    description="Fresh lime with soda"
+                    description="Fresh lemonade"
                 ),
                 MenuItem(
-                    id="drink_juice_mango",
-                    name="Mango Juice",
-                    price=150.0,
+                    id=45,
+                    name="Iced Tea",
+                    price=149.0,
                     category="drinks",
-                    description="Fresh mango juice"
+                    description="Refreshing iced tea"
                 ),
                 MenuItem(
-                    id="drink_juice_orange",
-                    name="Orange Juice",
-                    price=150.0,
-                    category="drinks",
-                    description="Fresh orange juice"
-                ),
-                MenuItem(
-                    id="drink_mojito",
-                    name="Mint Mojito",
-                    price=180.0,
-                    category="drinks",
-                    description="Refreshing mint mojito"
-                ),
-                MenuItem(
-                    id="drink_milkshake_vanilla",
+                    id=46,
                     name="Vanilla Milkshake",
-                    price=200.0,
+                    price=249.0,
                     category="drinks",
-                    description="Creamy vanilla shake"
+                    description="Creamy vanilla milkshake"
                 ),
                 MenuItem(
-                    id="drink_milkshake_chocolate",
+                    id=47,
                     name="Chocolate Milkshake",
-                    price=200.0,
+                    price=249.0,
                     category="drinks",
-                    description="Rich chocolate shake"
+                    description="Rich chocolate milkshake"
                 ),
                 MenuItem(
-                    id="drink_milkshake_strawberry",
+                    id=48,
                     name="Strawberry Milkshake",
-                    price=200.0,
+                    price=249.0,
                     category="drinks",
-                    description="Fresh strawberry shake"
+                    description="Fresh strawberry milkshake"
+                ),
+                MenuItem(
+                    id=49,
+                    name="Coffee",
+                    price=149.0,
+                    category="drinks",
+                    description="Hot brewed coffee"
+                ),
+                MenuItem(
+                    id=50,
+                    name="Cappuccino",
+                    price=199.0,
+                    category="drinks",
+                    description="Creamy cappuccino"
                 ),
             ],
             
-            # ENHANCED DESSERTS
-            "desserts": [
+            # SWEETS
+            "sweets": [
                 MenuItem(
-                    id="dessert_kheer",
-                    name="Kheer",
-                    price=150.0,
-                    category="desserts",
-                    description="Traditional rice pudding"
-                ),
-                MenuItem(
-                    id="dessert_gulab_jamun",
-                    name="Gulab Jamun",
-                    price=100.0,
-                    category="desserts",
-                    description="Sweet syrupy dumplings (2 pieces)"
-                ),
-                MenuItem(
-                    id="dessert_ras_malai",
-                    name="Ras Malai",
-                    price=180.0,
-                    category="desserts",
-                    description="Cottage cheese in sweetened milk (2 pieces)"
-                ),
-                MenuItem(
-                    id="dessert_gajar_halwa",
-                    name="Gajar Halwa",
-                    price=200.0,
-                    category="desserts",
-                    description="Traditional carrot dessert"
-                ),
-                MenuItem(
-                    id="dessert_lab_e_shireen",
-                    name="Lab-e-Shireen",
-                    price=220.0,
-                    category="desserts",
-                    description="Creamy vermicelli pudding"
-                ),
-                MenuItem(
-                    id="dessert_ice_cream_vanilla",
+                    id=51,
                     name="Vanilla Ice Cream",
-                    price=150.0,
-                    category="desserts",
-                    description="Classic vanilla (2 scoops)"
+                    price=149.0,
+                    category="sweets",
+                    description="Classic vanilla ice cream (2 scoops)"
                 ),
                 MenuItem(
-                    id="dessert_ice_cream_chocolate",
+                    id=52,
                     name="Chocolate Ice Cream",
-                    price=150.0,
-                    category="desserts",
-                    description="Rich chocolate (2 scoops)"
+                    price=149.0,
+                    category="sweets",
+                    description="Rich chocolate ice cream (2 scoops)"
                 ),
                 MenuItem(
-                    id="dessert_brownie",
+                    id=53,
+                    name="Strawberry Ice Cream",
+                    price=149.0,
+                    category="sweets",
+                    description="Fresh strawberry ice cream (2 scoops)"
+                ),
+                MenuItem(
+                    id=54,
+                    name="Hot Fudge Sundae",
+                    price=249.0,
+                    category="sweets",
+                    description="Ice cream with hot fudge sauce"
+                ),
+                MenuItem(
+                    id=55,
+                    name="Caramel Sundae",
+                    price=249.0,
+                    category="sweets",
+                    description="Ice cream with caramel sauce"
+                ),
+                MenuItem(
+                    id=56,
                     name="Chocolate Brownie",
-                    price=180.0,
-                    category="desserts",
-                    description="Warm chocolate brownie with ice cream"
+                    price=199.0,
+                    category="sweets",
+                    description="Warm chocolate brownie"
                 ),
                 MenuItem(
-                    id="dessert_cheesecake",
+                    id=57,
+                    name="Brownie with Ice Cream",
+                    price=299.0,
+                    category="sweets",
+                    description="Warm brownie topped with ice cream"
+                ),
+                MenuItem(
+                    id=58,
+                    name="Glazed Donut",
+                    price=99.0,
+                    category="sweets",
+                    description="Classic glazed donut"
+                ),
+                MenuItem(
+                    id=59,
+                    name="Chocolate Donut",
+                    price=99.0,
+                    category="sweets",
+                    description="Chocolate frosted donut"
+                ),
+                MenuItem(
+                    id=60,
+                    name="3 Chocolate Chip Cookies",
+                    price=149.0,
+                    category="sweets",
+                    description="Freshly baked chocolate chip cookies"
+                ),
+                MenuItem(
+                    id=61,
+                    name="Apple Pie",
+                    price=199.0,
+                    category="sweets",
+                    description="Warm apple pie slice"
+                ),
+                MenuItem(
+                    id=62,
                     name="Cheesecake",
-                    price=250.0,
-                    category="desserts",
-                    description="Classic New York cheesecake"
-                ),
-                MenuItem(
-                    id="dessert_tiramisu",
-                    name="Tiramisu",
-                    price=300.0,
-                    category="desserts",
-                    description="Italian coffee dessert"
+                    price=299.0,
+                    category="sweets",
+                    description="Creamy New York style cheesecake"
                 ),
             ],
         }
@@ -632,51 +518,26 @@ class MenuService:
         return """
 MENU CATEGORIES (Use show_category_items tool to see items):
 
-PAKISTANI CUISINE:
-- biryani (4 items)
-- karahi (3 items)
-- bbq (5 items)
-- curry (3 items)
-
-CHINESE CUISINE:
-- fried_rice (4 items)
-- noodles (3 items)
-- chinese_main (5 items)
-
-CONTINENTAL CUISINE:
-- pasta (4 items)
-- steaks (3 items)
-- pizza (4 items)
-
-FAST FOOD:
-- burgers (4 items)
-- fast_food (5 items)
-
-SIDES:
-- bread (5 items)
-
-DRINKS:
+FAST FOOD RESTAURANT:
+- pizza (6 items)
+- burger (7 items)
+- sandwich (6 items)
+- fried_chicken (10 items)
+- fries (7 items)
 - drinks (14 items)
+- sweets (12 items)
 
-DESSERTS:
-- desserts (10 items)
-
-IMPORTANT: When customer asks about a cuisine, ALWAYS use the show_category_items tool with the specific category name.
+IMPORTANT: When customer asks about any category, ALWAYS use the show_category_items tool with the specific category name.
 """
     
     @staticmethod
     def get_categories() -> dict:
         """Get organized menu categories"""
         return {
-            "main_courses": {
-                "Pakistani": ["biryani", "karahi", "bbq", "curry"],
-                "Chinese": ["fried_rice", "noodles", "chinese_main"],
-                "Continental": ["pasta", "steaks", "pizza"],
-                "Fast Food": ["burgers", "fast_food"]
-            },
-            "sides": ["bread"],
+            "main_items": ["pizza", "burger", "sandwich", "fried_chicken"],
+            "sides": ["fries"],
             "drinks": ["drinks"],
-            "desserts": ["desserts"]
+            "sweets": ["sweets"]
         }
     
     @staticmethod
@@ -684,7 +545,7 @@ IMPORTANT: When customer asks about a cuisine, ALWAYS use the show_category_item
         """Get items in a specific category for speech"""
         menu = MenuService.get_menu()
         if category not in menu:
-            return f"Sorry, {category} is not available."
+            return f"I apologize, but we don't have {category} available at the moment."
         
         items = menu[category]
         text = f"{category.replace('_', ' ').title()}:\n"
@@ -694,7 +555,7 @@ IMPORTANT: When customer asks about a cuisine, ALWAYS use the show_category_item
         return text
     
     @staticmethod
-    def find_item_by_id(item_id: str) -> MenuItem | None:
+    def find_item_by_id(item_id: int) -> MenuItem | None:
         """Find menu item by ID"""
         menu = MenuService.get_menu()
         for items in menu.values():
@@ -706,14 +567,39 @@ IMPORTANT: When customer asks about a cuisine, ALWAYS use the show_category_item
     @staticmethod
     def search_items(query: str) -> List[MenuItem]:
         """Search menu items by name"""
-        query = query.lower()
+        # Normalize the query
+        query_normalized = query.lower().strip()
+        
+        # Convert number words to digits in query
+        number_words = {
+            'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
+            'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10',
+            'eleven': '11', 'twelve': '12', 'thirteen': '13', 'fourteen': '14',
+            'fifteen': '15', 'sixteen': '16', 'seventeen': '17', 'eighteen': '18',
+            'nineteen': '19', 'twenty': '20'
+        }
+        
+        for word, digit in number_words.items():
+            query_normalized = query_normalized.replace(word, digit)
+        
         menu = MenuService.get_menu()
         results = []
         
+        # First pass: exact substring match
         for items in menu.values():
             for item in items:
-                if query in item.name.lower():
+                if query_normalized in item.name.lower():
                     results.append(item)
+        
+        # If no results, try partial word matching
+        if not results:
+            query_words = query_normalized.split()
+            for items in menu.values():
+                for item in items:
+                    item_name_lower = item.name.lower()
+                    # Check if all query words are in the item name
+                    if all(word in item_name_lower for word in query_words):
+                        results.append(item)
         
         return results
 
@@ -722,4 +608,3 @@ IMPORTANT: When customer asks about a cuisine, ALWAYS use the show_category_item
 def get_menu() -> Dict[str, List[MenuItem]]:
     """Get menu"""
     return MenuService.get_menu()
-
