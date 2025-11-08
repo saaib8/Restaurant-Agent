@@ -24,11 +24,12 @@ warnings.filterwarnings('ignore', message='Inheritance.*ClientSession.*discourag
 from livekit.agents import JobContext, WorkerOptions, cli
 from livekit.agents.voice import AgentSession
 from livekit.agents.voice.room_io import RoomInputOptions
-from livekit.plugins import silero, noise_cancellation
+from livekit.plugins import silero, noise_cancellation, openai
 
 from restaurant_agent.agents import GreeterAgent, OrderAgent
 from restaurant_agent.agents.base_agent import UserData
 from restaurant_agent.services import MenuService, MongoDB
+from restaurant_agent.config.settings import settings
 
 # Setup logging - detailed for debugging
 logging.basicConfig(
@@ -74,15 +75,21 @@ async def entrypoint(ctx: JobContext):
     # userdata.customer_phone = metadata.get('caller_phone')
     
     # Create session with adjusted VAD settings
+    # Higher min_silence_duration helps with phone numbers where users pause between digits
+    # Using Groq's Whisper Large V3 Turbo for ultra-fast, accurate STT
     session = AgentSession[UserData](
         userdata=userdata,
-        stt="deepgram",  # Deepgram STT
-        llm="openai/gpt-4o-mini",
-        tts="cartesia/sonic-2:9626c31c-bec5-4cca-baa8-f8ba9e84c8bc",
+        stt=openai.STT(
+            model="whisper-large-v3-turbo",  # Groq's ultra-fast Whisper model
+            api_key=settings.GROQ_API_KEY,   # Uses GROQ_API_KEY from .env.local
+            base_url="https://api.groq.com/openai/v1",  # Groq endpoint (OpenAI-compatible)
+        ),
+        llm="openai/gpt-4o-mini",  # Uses OPENAI_API_KEY from LiveKit Cloud environment
+        tts="cartesia/sonic-2:9626c31c-bec5-4cca-baa8-f8ba9e84c8bc",  # Uses CARTESIA_API_KEY from LiveKit Cloud
         vad=silero.VAD.load(
             min_speech_duration=0.3,     # Minimum speech duration to detect (seconds)
-            min_silence_duration=0.8,    # Wait longer before cutting (was default 0.5s)
-            padding_duration=0.2,        # Add padding around speech
+            min_silence_duration=1.5,    # Wait 1.5s before cutting (helps with phone number pauses)
+            padding_duration=0.4,        # Add padding around speech
         ),
         max_tool_steps=10,
     )

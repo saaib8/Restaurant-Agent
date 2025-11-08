@@ -39,7 +39,7 @@ class MenuService:
                 ),
                 MenuItem(
                     id=3,
-                    name="Barbeq Chicken Pizza",
+                    name="Barbecue Chicken Pizza",
                     price=1199.0,
                     category="pizza",
                     description="Grilled chicken with BBQ sauce"
