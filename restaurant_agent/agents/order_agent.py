@@ -9,43 +9,42 @@ from livekit.agents.llm import function_tool
 from .base_agent import BaseAgent, RunContext_T
 from ..services.database import MongoDB
 from ..services.menu_service import MenuService
+from ..helpers.stt_corrections import correct_menu_item_name
 from datetime import datetime
 
 logger = logging.getLogger("restaurant-agent")
 
+# Constants
+MAX_QUANTITY_PER_ITEM = 20  
+
 
 def normalize_phone_number(phone_str: str) -> str:
     """Convert spoken phone number words to digits"""
-    # Mapping of spoken numbers to digits
     word_to_digit = {
         'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4',
         'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9',
         'oh': '0', 'o': '0'
     }
     
-    # Convert to lowercase and split into words
     phone_lower = phone_str.lower().strip()
     words = phone_lower.split()
     
-    # Convert each word to digit, handling double/triple patterns
     digits = []
     i = 0
     while i < len(words):
         word = words[i]
         
-        # Check for "double", "triple" patterns
         if word in ['double', 'triple'] and i + 1 < len(words):
             next_word = words[i + 1]
             if next_word in word_to_digit:
                 digit = word_to_digit[next_word]
                 if word == 'double':
-                    digits.append(digit * 2)  # Repeat twice
+                    digits.append(digit * 2)  
                 elif word == 'triple':
-                    digits.append(digit * 3)  # Repeat three times
-                i += 2  # Skip both words
+                    digits.append(digit * 3)  
+                i += 2  
                 continue
         
-        # Regular number word conversion
         if word in word_to_digit:
             digits.append(word_to_digit[word])
         elif word.isdigit():
@@ -53,41 +52,82 @@ def normalize_phone_number(phone_str: str) -> str:
         
         i += 1
     
-    # Join all digits
     phone_number = ''.join(digits)
     
-    # Remove any non-digit characters (in case there are hyphens, spaces, etc.)
     phone_number = re.sub(r'\D', '', phone_number)
     
     return phone_number
 
 
+
 class OrderAgent(BaseAgent):
-    """Order taking agent - handles customer orders"""
+    """Order taking agent"""
     
     def __init__(self, menu_text: str) -> None:
         super().__init__(
             instructions=(
-                "You are an experienced order taker at a fast food restaurant.\n\n"
+                "You are an experienced order taker at a fast food restaurant. First Say Welcome to ordering service and then ask: 'May I have your name please?'\n\n"
                 f"{menu_text}\n\n"
-                "CRITICAL RULES:\n"
-                "1. If customer mentions a SPECIFIC ITEM (like 'Sprite', 'Pepperoni Pizza', 'Zinger Burger'), "
-                "ADD IT DIRECTLY to their order using add_item_to_order.\n"
-                "2. If customer mentions a CATEGORY (like 'drinks', 'pizza', 'burgers'), "
-                "show them options using show_category_items.\n"
-                "3. If customer says they're unsure, show category items.\n\n"
-                "Examples:\n"
-                "- Customer: 'I want Sprite' → Call add_item_to_order(item_name='Sprite', quantity=1)\n"
-                "- Customer: 'Show me drinks' → Call show_category_items(category='drinks')\n"
-                "- Customer: 'What pizza do you have?' → Call show_category_items(category='pizza')\n"
-                "- Customer: 'Pepperoni Pizza' → Call add_item_to_order(item_name='Pepperoni Pizza', quantity=1)\n\n"
+                "CRITICAL ORDERING RULES - FOLLOW STRICTLY:\n"
+                "1. QUANTITY EXTRACTION - CRITICAL:\n"
+                "   When customer says: 'thirty pepperoni pizza' or 'five sprite' or '2 burgers'\n"
+                "   - Extract the QUANTITY NUMBER: thirty=30, five=5, 2=2, etc.\n"
+                "   - Extract the ITEM NAME: 'pepperoni pizza', 'sprite', 'burgers'\n"
+                "   - REMOVE quantity words from item_name before searching!\n"
+                "   - Common quantity words: one, two, three, four, five, six, seven, eight, nine, ten, eleven, twelve, etc.\n"
+                "   - Also: 1, 2, 3, 4, 5, 20, 30, hundred, etc.\n\n"
+                "2. When customer mentions ANY food item:\n"
+                "   - Generic category ONLY ('chicken', 'burger', 'pizza', 'drinks') → Call show_category_items\n"
+                "   - ANY specific item/dish name ('Grill Chicken Sandwich', 'Sprite', 'Zinger Burger') → MUST call search_and_suggest_item FIRST\n"
+                "   - NEVER EVER call add_item_to_order without calling search_and_suggest_item first!\n"
+                "   - NEVER EVER add items without explicit customer confirmation (yes/yeah/sure/okay/definitely)!\n\n"
+                "3. MANDATORY TWO-STEP PROCESS for ALL items:\n"
+                "   Step 1: Customer mentions item → Extract quantity if mentioned → call search_and_suggest_item(item_name='item WITHOUT quantity')\n"
+                "   Step 2: Wait for customer to say YES/OKAY/SURE\n"
+                "   Step 3: ONLY after confirmation → Call add_item_to_order(item_name='exact item name', quantity=extracted_number)\n"
+                "   Step 4: Function returns confirmation - speak it naturally\n\n"
+                "4. QUANTITY VALIDATION:\n"
+                "   - Minimum quantity: 1\n"
+                "   - Maximum quantity per item: 20\n"
+                "   - If customer requests more than 20, politely inform them of the limit\n"
+                "   - Example: 'I can add up to 20 items at a time. Would you like 20, or a different quantity?'\n\n"
+                "IMPORTANT: Pass ONLY the item name (WITHOUT quantity) to search_and_suggest_item!\n\n"
+                "4. Category mapping:\n"
+                "   - 'chicken', 'fried chicken', 'wings', 'nuggets' → fried_chicken\n"
+                "   - 'burger', 'burgers' → burger\n"
+                "   - 'pizza' → pizza\n"
+                "   - 'sandwich', 'sandwiches' → sandwich\n"
+                "   - 'fries' → fries\n"
+                "   - 'drinks', 'beverages' → drinks\n"
+                "   - 'dessert', 'sweets' → sweets\n\n"
+                "CORRECT Examples:\n"
+                "✓ Customer: 'I want chicken' → show_category_items(category='fried_chicken')\n"
+                "✓ Customer: 'Grill Chicken Sandwich' → search_and_suggest_item(item_name='Grill Chicken Sandwich')\n"
+                "  Agent gets result: 'Would you like me to add Grilled Chicken Sandwich (450 rupees)?'\n"
+                "  Customer: 'Yes please' → add_item_to_order(item_name='Grilled Chicken Sandwich', quantity=1)\n"
+                "  Agent speaks: 'Great! Added 1x Grilled Chicken Sandwich...'\n"
+                "✓ Customer: 'thirty pepperoni pizza' → Extract: quantity=30, item='pepperoni pizza'\n"
+                "  → search_and_suggest_item(item_name='pepperoni pizza')\n"
+                "  Agent: 'Would you like me to add Pepperoni Pizza (800 rupees) to your order?'\n"
+                "  Customer: 'Yes' → add_item_to_order(item_name='Pepperoni Pizza', quantity=30) BUT WAIT! 30 > 20!\n"
+                "  Agent: 'I can add up to 20 Pepperoni Pizzas at a time. Would you like 20?'\n"
+                "✓ Customer: 'five sprite' → Extract: quantity=5, item='sprite'\n"
+                "  → search_and_suggest_item(item_name='sprite')\n"
+                "  Customer: 'yes' → add_item_to_order(item_name='Sprite', quantity=5)\n"
+                "✓ Customer: 'show me burgers' → show_category_items(category='burger')\n\n"
+                "WRONG Examples (NEVER DO THIS):\n"
+                "✗ Customer: 'Sprite' → add_item_to_order (NO! Must search_and_suggest_item first!)\n"
+                "✗ Customer: 'Grill Chicken' → add_item_to_order(item_name='Crispy Chicken') (NO! Wrong item + no confirmation!)\n"
+                "✗ Customer: 'thirty pepperoni pizza' → search_and_suggest_item(item_name='thirty pepperoni pizza') (NO! Remove quantity!)\n"
+                "✗ Customer: 'five sprite' → add_item_to_order(item_name='five sprite', quantity=1) (NO! Extract quantity separately!)\n\n"
                 "ORDERING FLOW:\n"
-                "1. First ask: 'May I have your name please?'\n"
+                "1. First Say Welcome to ordering service and then ask: 'May I have your name please?'\n"
                 "   - When you get the name, IMMEDIATELY call update_customer_name function\n"
                 "2. After getting name, ask: 'Thank you [Name]! And what's your phone number?'\n"
                 "   - ALWAYS use their name when asking for phone number\n"
-                "   - When customer provides their phone number , IMMEDIATELY call update_customer_phone function\n"
-                "3. After phone number is saved, ask: 'What would you like? We have Pizza, Burgers, Sandwiches, Fried Chicken, Fries, Drinks, and Sweets.'\n"
+                "   - When customer provides their phone number, IMMEDIATELY call update_customer_phone function\n"
+                " After executing update_customer_phone function, say 'Thank you! I've recorded your phone number. Now, what would you like to order?'\n"
+                "3.  ask: 'What would you like? We have Pizza, Burgers, Sandwiches, Fried Chicken, Fries, Drinks, and Sweets.'\n"
                 "4. If they name a specific item, add it. If they ask about a category, show options.\n"
                 "5. After main items, ask: 'Would you like any drinks?'\n"
                 "   - If they say specific drink, add it directly\n"
@@ -181,12 +221,16 @@ class OrderAgent(BaseAgent):
         CRITICAL: Call this IMMEDIATELY when customer provides phone number.
 
         - Customer provides their phone number → Call this right away
+        
+        NOTE: Validation removed - will be replaced when Twilio integration is complete
+        and phone numbers come from participant metadata.
         """
         userdata = context.userdata
+        
         # Normalize phone number (convert words to digits)
         normalized_phone = normalize_phone_number(phone)
         userdata.customer_phone = normalized_phone
-        logger.info(f"📞 Customer phone: {phone} → normalized: {normalized_phone}")
+        logger.info(f"📞 Customer phone recorded: {phone} → {normalized_phone}")
         
         # Use customer's name if available
         if userdata.customer_name:
@@ -195,26 +239,97 @@ class OrderAgent(BaseAgent):
             return f"Thank you! I've recorded your phone number. Now, what would you like to order?"
     
     @function_tool()
+    async def search_and_suggest_item(
+        self,
+        item_name: Annotated[str, Field(description="Name of the menu item customer mentioned")],
+        context: RunContext_T,
+    ) -> str:
+        """
+        Search for an item and suggest it to the customer with price.
+        Use this when customer mentions a specific item name (not a category).
+        Returns confirmation prompt if found, or suggests related category if not found.
+        """
+        logger.info(f"🔍 Searching for item: '{item_name}'")
+        
+        # Correct common STT errors first
+        corrected_name = correct_menu_item_name(item_name)
+        
+        # Search for item in menu (try corrected name first, then original)
+        items = self.menu_service.search_items(corrected_name)
+        if not items and corrected_name != item_name:
+            # If correction didn't help, try original name
+            logger.info(f"🔍 Correction didn't help, trying original: '{item_name}'")
+            items = self.menu_service.search_items(item_name)
+        
+        if not items:
+            logger.warning(f"❌ Item not found: '{item_name}'")
+            
+            # Try to suggest related category
+            item_lower = item_name.lower()
+            suggested_category = None
+            
+            if 'chicken' in item_lower or 'wing' in item_lower or 'nugget' in item_lower:
+                suggested_category = 'fried_chicken'
+            elif 'burger' in item_lower:
+                suggested_category = 'burger'
+            elif 'pizza' in item_lower:
+                suggested_category = 'pizza'
+            elif 'sandwich' in item_lower or 'sub' in item_lower:
+                suggested_category = 'sandwich'
+            elif 'fries' in item_lower or 'fry' in item_lower:
+                suggested_category = 'fries'
+            elif 'drink' in item_lower or 'soda' in item_lower or 'juice' in item_lower:
+                suggested_category = 'drinks'
+            elif 'sweet' in item_lower or 'dessert' in item_lower or 'cake' in item_lower:
+                suggested_category = 'sweets'
+            
+            if suggested_category:
+                category_items = self.menu_service.get_category_description(suggested_category)
+                return f"Sorry, we don't have {item_name} available. But let me show you what we have:\n\n{category_items}"
+            else:
+                return f"Sorry, we don't have {item_name} on our menu. Would you like to hear about our Pizza, Burgers, Fried Chicken, or other items?"
+        
+        # If multiple matches, show first one but mention there are more
+        item = items[0]
+        logger.info(f"✅ Found item: {item.name} (ID: {item.id}, Price: Rs. {item.price})")
+        
+        return f"Would you like me to add {item.name} ({item.price:.0f} rupees) to your order?"
+    
+    @function_tool()
     async def add_item_to_order(
         self,
         context: RunContext_T,
-        item_name: Annotated[str, Field(description="Name of the menu item")],
+        item_name: Annotated[str, Field(description="EXACT name of the menu item to add - must match what was shown in search_and_suggest_item")],
         quantity: Annotated[int, Field(description="Quantity")] = 1,
         special_instructions: Annotated[str, Field(description="Special instructions (optional)")] = "",
     ) -> str:
         """
         Add an item to the customer's order.
-        Call this after confirming the item and quantity with the customer.
+        
+        CRITICAL REQUIREMENTS:
+        1. ONLY call this AFTER customer explicitly confirmed (yes/okay/sure)
+        2. ONLY call this AFTER calling search_and_suggest_item first
+        3. Use the EXACT item name returned from search_and_suggest_item
+        4. DO NOT call this directly when customer first mentions an item
         """
         userdata = context.userdata
         
-        logger.info(f"🔍 Searching for item: '{item_name}' (quantity: {quantity})")
+        logger.info(f"🔍 Adding item to order: '{item_name}' (quantity: {quantity})")
+        
+        # Validate quantity
+        if quantity < 1:
+            logger.warning(f"⚠️  Invalid quantity: {quantity} (too low)")
+            return "Please specify a quantity of at least 1."
+        
+        if quantity > MAX_QUANTITY_PER_ITEM:
+            logger.warning(f"⚠️  Invalid quantity: {quantity} (exceeds maximum)")
+            return f"I'm sorry, but we can only process orders up to {MAX_QUANTITY_PER_ITEM} items at a time for each item. Please reduce the quantity."
         
         # Search for item in menu
         items = self.menu_service.search_items(item_name)
         if not items:
             logger.warning(f"❌ Item not found: '{item_name}'")
-            return f"I apologize, but we don't have {item_name} on our menu currently. Would you like me to show you what we have available?"
+            return f"I apologize, I couldn't find {item_name} in our menu. Let me search again."
         
         item = items[0]  # Take first match
         logger.info(f"✅ Found item: {item.name} (ID: {item.id}, Price: Rs. {item.price})")
@@ -235,9 +350,10 @@ class OrderAgent(BaseAgent):
         logger.info(f"➕ Added {quantity}x {item.name} to order")
         
         return (
-            f"Added {quantity}x {item.name} ({item.price:.0f} rupees each) to your order. "
-            f"Subtotal: {order_item['subtotal']:.0f} rupees. "
-            f"Current total: {userdata.total_amount:.0f} rupees"
+            f"Great! Added {quantity}  {item.name} to your order. "
+            f"That's {order_item['subtotal']:.0f} rupees. "
+            f"Your current total is {userdata.total_amount:.0f} rupees. "
+            f"Would you like anything else?"
         )
     
     @function_tool()
