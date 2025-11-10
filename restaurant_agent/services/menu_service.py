@@ -170,63 +170,63 @@ class MenuService:
             "fried_chicken": [
                 MenuItem(
                     id=20,
-                    name="6 Piece Fried Chicken",
+                    name="Small Fried Chicken Bucket",
                     price=899.0,
                     category="fried_chicken",
                     description="6 pieces of crispy fried chicken"
                 ),
                 MenuItem(
                     id=21,
-                    name="9 Piece Fried Chicken",
+                    name="Medium Fried Chicken Bucket",
                     price=1299.0,
                     category="fried_chicken",
                     description="9 pieces of crispy fried chicken"
                 ),
                 MenuItem(
                     id=22,
-                    name="12 Piece Fried Chicken",
+                    name="Large Fried Chicken Bucket",
                     price=1699.0,
                     category="fried_chicken",
                     description="12 pieces of crispy fried chicken"
                 ),
                 MenuItem(
                     id=23,
-                    name="6 Chicken Wings",
+                    name="Small Chicken Wings",
                     price=449.0,
                     category="fried_chicken",
                     description="6 crispy chicken wings"
                 ),
                 MenuItem(
                     id=24,
-                    name="12 Chicken Wings",
+                    name="Large Chicken Wings",
                     price=799.0,
                     category="fried_chicken",
                     description="12 crispy chicken wings"
                 ),
                 MenuItem(
                     id=25,
-                    name="3 Chicken Strips",
+                    name="Small Chicken Strips",
                     price=349.0,
                     category="fried_chicken",
                     description="3 crispy chicken strips"
                 ),
                 MenuItem(
                     id=26,
-                    name="5 Chicken Strips",
+                    name="Large Chicken Strips",
                     price=549.0,
                     category="fried_chicken",
                     description="5 crispy chicken strips"
                 ),
                 MenuItem(
                     id=27,
-                    name="6 Chicken Nuggets",
+                    name="Small Chicken Nuggets",
                     price=299.0,
                     category="fried_chicken",
                     description="6 crispy chicken nuggets"
                 ),
                 MenuItem(
                     id=28,
-                    name="9 Chicken Nuggets",
+                    name="Large Chicken Nuggets",
                     price=399.0,
                     category="fried_chicken",
                     description="9 crispy chicken nuggets"
@@ -462,7 +462,7 @@ class MenuService:
                 ),
                 MenuItem(
                     id=60,
-                    name="3 Chocolate Chip Cookies",
+                    name="Chocolate Chip Cookies",
                     price=149.0,
                     category="sweets",
                     description="Freshly baked chocolate chip cookies"
@@ -476,7 +476,7 @@ class MenuService:
                 ),
                 MenuItem(
                     id=62,
-                    name="Cheesecake",
+                    name="Cheese cake",
                     price=299.0,
                     category="sweets",
                     description="Creamy New York style cheesecake"
@@ -548,11 +548,22 @@ IMPORTANT: When customer asks about any category, ALWAYS use the show_category_i
             return f"I apologize, but we don't have {category} available at the moment."
         
         items = menu[category]
-        text = f"{category.replace('_', ' ').title()}:\n"
-        for item in items:
-            text += f"{item.name} - {item.price:.0f} rupees\n"
+        category_name = category.replace('_', ' ').title()
         
-        return text
+        # Build natural speech format without numbers
+        item_descriptions = []
+        for item in items:
+            item_descriptions.append(f"{item.name} for {item.price:.0f} rupees")
+        
+        # Join items with commas and "and" for the last item
+        if len(item_descriptions) == 1:
+            items_text = item_descriptions[0]
+        elif len(item_descriptions) == 2:
+            items_text = f"{item_descriptions[0]}, and {item_descriptions[1]}"
+        else:
+            items_text = ", ".join(item_descriptions[:-1]) + f", and {item_descriptions[-1]}"
+        
+        return f"For {category_name}, we have {items_text}."
     
     @staticmethod
     def find_item_by_id(item_id: int) -> MenuItem | None:
@@ -565,8 +576,49 @@ IMPORTANT: When customer asks about any category, ALWAYS use the show_category_i
         return None
     
     @staticmethod
+    def _fuzzy_match(word1: str, word2: str, threshold: float = 0.65) -> bool:
+        """
+        Check if two words are similar enough using Levenshtein distance.
+        Returns True if similarity >= threshold.
+        
+        Args:
+            word1: First word
+            word2: Second word
+            threshold: Similarity threshold (0.0 to 1.0)
+        """
+        if word1 == word2:
+            return True
+
+        len1, len2 = len(word1), len(word2)
+        if len1 == 0 or len2 == 0:
+            return False
+        
+        dp = [[0] * (len2 + 1) for _ in range(len1 + 1)]
+        
+        for i in range(len1 + 1):
+            dp[i][0] = i
+        for j in range(len2 + 1):
+            dp[0][j] = j
+        
+        for i in range(1, len1 + 1):
+            for j in range(1, len2 + 1):
+                if word1[i-1] == word2[j-1]:
+                    dp[i][j] = dp[i-1][j-1]
+                else:
+                    dp[i][j] = 1 + min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1])
+        
+        distance = dp[len1][len2]
+        max_len = max(len1, len2)
+        similarity = 1 - (distance / max_len)
+        
+        return similarity >= threshold
+    
+    @staticmethod
     def search_items(query: str) -> List[MenuItem]:
-        """Search menu items by name"""
+        """
+        Search menu items by name with fuzzy matching.
+        Supports exact matches, partial matches, and fuzzy matches.
+        """
         # Normalize the query
         query_normalized = query.lower().strip()
         
@@ -584,6 +636,7 @@ IMPORTANT: When customer asks about any category, ALWAYS use the show_category_i
         
         menu = MenuService.get_menu()
         results = []
+        fuzzy_results = []
         
         # First pass: exact substring match
         for items in menu.values():
@@ -591,7 +644,7 @@ IMPORTANT: When customer asks about any category, ALWAYS use the show_category_i
                 if query_normalized in item.name.lower():
                     results.append(item)
         
-        # If no results, try partial word matching
+        # Second pass: partial word matching (all words must be in item name)
         if not results:
             query_words = query_normalized.split()
             for items in menu.values():
@@ -600,6 +653,29 @@ IMPORTANT: When customer asks about any category, ALWAYS use the show_category_i
                     # Check if all query words are in the item name
                     if all(word in item_name_lower for word in query_words):
                         results.append(item)
+        
+        # Third pass: fuzzy matching (for typos and phonetic variations)
+        if not results:
+            query_words = query_normalized.split()
+            for items in menu.values():
+                for item in items:
+                    item_words = item.name.lower().split()
+                    
+                    # For each query word, check if there's a fuzzy match in item words
+                    matches = 0
+                    for query_word in query_words:
+                        for item_word in item_words:
+                            # Use 0.8 threshold for fuzzy matching
+                            # This allows 1-2 char differences: "margarita" ≈ "margherita"
+                            if MenuService._fuzzy_match(query_word, item_word, threshold=0.65):
+                                matches += 1
+                                break
+                    
+                    # If all query words have fuzzy matches, include the item
+                    if matches == len(query_words):
+                        fuzzy_results.append(item)
+            
+            results = fuzzy_results
         
         return results
 

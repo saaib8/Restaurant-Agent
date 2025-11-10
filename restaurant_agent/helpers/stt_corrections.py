@@ -88,6 +88,7 @@ MENU_ITEM_CORRECTIONS = {
     "singer": "zinger burger",            # Common: STT hears "singer" instead of "zinger"
     "singer burger": "zinger burger",
     "zing burger": "zinger burger",
+    "ginger burger": "zinger burger",
     
     "beef burger": "beef burger",
     "chief burger": "beef burger",        # Mishearing
@@ -154,8 +155,11 @@ MENU_ITEM_CORRECTIONS = {
     "peter": "pizza",                      # Mishearing
     
     "margarita": "margherita pizza",      # Valid English word (the drink)
+    "margarita pizza": "margherita pizza",
     "margherita": "margherita pizza",
+    "margherita pizza": "margherita pizza",
     "margareta": "margherita pizza",      # Name variant
+    "margareta pizza": "margherita pizza",
     "cheese pizza": "margherita pizza",
     
     "pepperoni": "pepperoni pizza",
@@ -163,11 +167,13 @@ MENU_ITEM_CORRECTIONS = {
     "pepper only": "pepperoni pizza",     # Mishearing
     "paper only": "pepperoni pizza",      # Mishearing
     
-    "bbq chicken": "barbeq chicken pizza",
-    "barbeque chicken": "barbeq chicken pizza",
-    "barbecue chicken": "barbeq chicken pizza",
-    "bbq": "barbeq chicken pizza",
-    "barbeq": "barbeq chicken pizza",
+    "bbq chicken": "barbecue chicken pizza",
+    "barbeque chicken": "barbecue chicken pizza",
+    "barbecue chicken": "barbecue chicken pizza",
+    "barbecue chicken pizza": "barbecue chicken pizza",
+    "bbq": "barbecue chicken pizza",
+    "barbeq": "barbecue chicken pizza",
+    "barbeq chicken pizza": "barbecue chicken pizza",
     
     "hawaiian": "hawaiian pizza",
     "hawaiian pizza": "hawaiian pizza",
@@ -188,8 +194,12 @@ MENU_ITEM_CORRECTIONS = {
     "triple decker": "club sandwich",
     
     "grilled sandwich": "grilled chicken sandwich",
+    "grilled sandwiches": "grilled chicken sandwich",
+    "grilled chicken sandwiches": "grilled chicken sandwich",
     "grill sandwich": "grilled chicken sandwich",
+    "grill sandwiches": "grilled chicken sandwich",
     "girl sandwich": "grilled chicken sandwich",  # Mishearing
+    "girl sandwiches": "grilled chicken sandwich",
     
     "crispy sandwich": "crispy chicken sandwich",
     "crisp sandwich": "crispy chicken sandwich",

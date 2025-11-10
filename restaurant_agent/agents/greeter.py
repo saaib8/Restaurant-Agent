@@ -21,7 +21,7 @@ class GreeterAgent(BaseAgent):
                 "Your job is to:\n"
                 "1. Greet the customer warmly\n"
                 "2. Ask if they'd like to place an order\n"
-                "3. If they say YES, transfer them to the order agent\n"
+                "3. If they say YES, transfer them to the Ordering Service\n"
                 "4. If they say NO or they're not interested, politely say goodbye: "
                 "'No problem! Feel free to call us whenever you're hungry. Have a great day!'\n\n"
                 "VOICE FORMATTING:\n"

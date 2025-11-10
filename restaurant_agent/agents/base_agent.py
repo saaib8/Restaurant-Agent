@@ -24,6 +24,9 @@ class UserData:
     order_items: list[dict] = field(default_factory=list)
     total_amount: float = 0.0
     
+    # Bulk order processing
+    pending_bulk_order: list[dict] = field(default_factory=list)
+    
     # Agent management
     agents: dict[str, Agent] = field(default_factory=dict)
     prev_agent: Optional[Agent] = None

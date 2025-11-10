@@ -3,7 +3,7 @@ Order Agent - Takes orders from customers
 """
 import logging
 import re
-from typing import Annotated
+from typing import Annotated, List
 from pydantic import Field
 from livekit.agents.llm import function_tool
 from .base_agent import BaseAgent, RunContext_T
@@ -68,31 +68,37 @@ class OrderAgent(BaseAgent):
             instructions=(
                 "You are an experienced order taker at a fast food restaurant. First Say Welcome to ordering service and then ask: 'May I have your name please?'\n\n"
                 f"{menu_text}\n\n"
-                "CRITICAL ORDERING RULES - FOLLOW STRICTLY:\n"
-                "1. QUANTITY EXTRACTION - CRITICAL:\n"
-                "   When customer says: 'thirty pepperoni pizza' or 'five sprite' or '2 burgers'\n"
-                "   - Extract the QUANTITY NUMBER: thirty=30, five=5, 2=2, etc.\n"
-                "   - Extract the ITEM NAME: 'pepperoni pizza', 'sprite', 'burgers'\n"
-                "   - REMOVE quantity words from item_name before searching!\n"
-                "   - Common quantity words: one, two, three, four, five, six, seven, eight, nine, ten, eleven, twelve, etc.\n"
-                "   - Also: 1, 2, 3, 4, 5, 20, 30, hundred, etc.\n\n"
-                "2. When customer mentions ANY food item:\n"
-                "   - Generic category ONLY ('chicken', 'burger', 'pizza', 'drinks') → Call show_category_items\n"
-                "   - ANY specific item/dish name ('Grill Chicken Sandwich', 'Sprite', 'Zinger Burger') → MUST call search_and_suggest_item FIRST\n"
-                "   - NEVER EVER call add_item_to_order without calling search_and_suggest_item first!\n"
-                "   - NEVER EVER add items without explicit customer confirmation (yes/yeah/sure/okay/definitely)!\n\n"
-                "3. MANDATORY TWO-STEP PROCESS for ALL items:\n"
-                "   Step 1: Customer mentions item → Extract quantity if mentioned → call search_and_suggest_item(item_name='item WITHOUT quantity')\n"
-                "   Step 2: Wait for customer to say YES/OKAY/SURE\n"
-                "   Step 3: ONLY after confirmation → Call add_item_to_order(item_name='exact item name', quantity=extracted_number)\n"
-                "   Step 4: Function returns confirmation - speak it naturally\n\n"
+                "CRITICAL ORDERING RULES - FOLLOW STRICTLY:\n\n"
+                "1. MULTIPLE ITEMS vs SINGLE ITEM:\n"
+                "    Customer lists MULTIPLE items in ONE sentence:\n"
+                "      'I want a margherita pizza, two sprites, and loaded fries'\n"
+                "      → Use process_multiple_items with ALL items at once\n"
+                "      → Extract each item with its quantity\n"
+                "      → Never say 'let me search' or 'let me check'\n"
+                "      → Process silently and respond with complete summary\n"
+                "   \n"
+                "    Customer mentions ONE item at a time:\n"
+                "      'I want a margherita pizza' (waits) 'Also add sprite'\n"
+                "      → Use search_and_suggest_item for single item\n"
+                "      → Wait for confirmation before adding\n\n"
+                "2. BULK ORDER PROCESS (for multiple items):\n"
+                "   Step 1: Customer lists multiple items → Extract ALL items with quantities\n"
+                "   Step 2: Call process_multiple_items([{name: 'item1', quantity: 1}, {name: 'item2', quantity: 2}])\n"
+                "   Step 3: Function returns summary with available/unavailable items and total price\n"
+                "   Step 4: Customer confirms (yes/okay/sure) → Call confirm_bulk_order()\n"
+                "   Step 5: All items added at once\n"
+                "   \n"
+                "   CRITICAL: NEVER say 'let me search for X' or 'let me check Y' - just do it silently!\n\n"
+                "3. QUANTITY EXTRACTION:\n"
+                "   When customer says: 'three sprites' or 'one pizza' or '2 burgers'\n"
+                "   - Extract QUANTITY: three=3, one=1, 2=2\n"
+                "   - Extract ITEM NAME: 'sprite', 'pizza', 'burger' (WITHOUT quantity words)\n"
+                "   - Pass to function as separate quantity parameter\n\n"
                 "4. QUANTITY VALIDATION:\n"
-                "   - Minimum quantity: 1\n"
-                "   - Maximum quantity per item: 20\n"
-                "   - If customer requests more than 20, politely inform them of the limit\n"
-                "   - Example: 'I can add up to 20 items at a time. Would you like 20, or a different quantity?'\n\n"
-                "IMPORTANT: Pass ONLY the item name (WITHOUT quantity) to search_and_suggest_item!\n\n"
-                "4. Category mapping:\n"
+                "   - Minimum: 1\n"
+                "   - Maximum per item: 20\n"
+                "   - If customer requests more, inform them of the limit\n\n"
+                "5. Category mapping (for show_category_items):\n"
                 "   - 'chicken', 'fried chicken', 'wings', 'nuggets' → fried_chicken\n"
                 "   - 'burger', 'burgers' → burger\n"
                 "   - 'pizza' → pizza\n"
@@ -100,40 +106,32 @@ class OrderAgent(BaseAgent):
                 "   - 'fries' → fries\n"
                 "   - 'drinks', 'beverages' → drinks\n"
                 "   - 'dessert', 'sweets' → sweets\n\n"
-                "CORRECT Examples:\n"
-                "✓ Customer: 'I want chicken' → show_category_items(category='fried_chicken')\n"
-                "✓ Customer: 'Grill Chicken Sandwich' → search_and_suggest_item(item_name='Grill Chicken Sandwich')\n"
-                "  Agent gets result: 'Would you like me to add Grilled Chicken Sandwich (450 rupees)?'\n"
-                "  Customer: 'Yes please' → add_item_to_order(item_name='Grilled Chicken Sandwich', quantity=1)\n"
-                "  Agent speaks: 'Great! Added 1x Grilled Chicken Sandwich...'\n"
-                "✓ Customer: 'thirty pepperoni pizza' → Extract: quantity=30, item='pepperoni pizza'\n"
-                "  → search_and_suggest_item(item_name='pepperoni pizza')\n"
-                "  Agent: 'Would you like me to add Pepperoni Pizza (800 rupees) to your order?'\n"
-                "  Customer: 'Yes' → add_item_to_order(item_name='Pepperoni Pizza', quantity=30) BUT WAIT! 30 > 20!\n"
-                "  Agent: 'I can add up to 20 Pepperoni Pizzas at a time. Would you like 20?'\n"
-                "✓ Customer: 'five sprite' → Extract: quantity=5, item='sprite'\n"
-                "  → search_and_suggest_item(item_name='sprite')\n"
-                "  Customer: 'yes' → add_item_to_order(item_name='Sprite', quantity=5)\n"
-                "✓ Customer: 'show me burgers' → show_category_items(category='burger')\n\n"
+                "CORRECT BULK ORDER Examples:\n"
+                "✓ Customer: 'I want margherita pizza, two sprites, and loaded fries'\n"
+                "  Agent: → process_multiple_items(item1_name='margherita pizza', item1_quantity=1, item2_name='sprite', item2_quantity=2, item3_name='loaded fries', item3_quantity=1)\n"
+                "  Agent speaks: 'Great! Here's what I can add to your order: 1x Margherita Pizza - 899 rupees, 2x Sprite - 198 rupees, 1x Loaded Fries - 349 rupees. Total: 1446 rupees. Would you like me to add these?'\n"
+                "  Customer: 'Yes'\n"
+                "  Agent: → confirm_bulk_order()\n"
+                "  Agent speaks: 'Perfect! I've added 1x Margherita Pizza, 2x Sprite, 1x Loaded Fries...'\n\n"
+                "✓ Customer: 'Give me one pepperoni pizza, one zinger burger, five fries, and three cokes'\n"
+                "  Agent: → process_multiple_items(item1_name='pepperoni pizza', item1_quantity=1, item2_name='zinger burger', item2_quantity=1, item3_name='fries', item3_quantity=5, item4_name='coke', item4_quantity=3)\n"
+                "  (NO searching messages - silent processing)\n"
+                "  Agent speaks: 'Great! Here's what I can add...' (with full summary)\n\n"
                 "WRONG Examples (NEVER DO THIS):\n"
-                "✗ Customer: 'Sprite' → add_item_to_order (NO! Must search_and_suggest_item first!)\n"
-                "✗ Customer: 'Grill Chicken' → add_item_to_order(item_name='Crispy Chicken') (NO! Wrong item + no confirmation!)\n"
-                "✗ Customer: 'thirty pepperoni pizza' → search_and_suggest_item(item_name='thirty pepperoni pizza') (NO! Remove quantity!)\n"
-                "✗ Customer: 'five sprite' → add_item_to_order(item_name='five sprite', quantity=1) (NO! Extract quantity separately!)\n\n"
+                "✗ Customer lists multiple items → Agent says 'Let me search for margherita pizza first' (NO! Process all at once!)\n"
+                "✗ Customer lists multiple items → Agent calls search_and_suggest_item for each item separately (NO! Use process_multiple_items!)\n"
+                "✗ Agent: 'I'll check the margherita pizza, one moment' (NO! Never say you're checking!)\n\n"
                 "ORDERING FLOW:\n"
                 "1. First Say Welcome to ordering service and then ask: 'May I have your name please?'\n"
                 "   - When you get the name, IMMEDIATELY call update_customer_name function\n"
                 "2. After getting name, ask: 'Thank you [Name]! And what's your phone number?'\n"
                 "   - ALWAYS use their name when asking for phone number\n"
                 "   - When customer provides their phone number, IMMEDIATELY call update_customer_phone function\n"
-                " After executing update_customer_phone function, say 'Thank you! I've recorded your phone number. Now, what would you like to order?'\n"
-                "3.  ask: 'What would you like? We have Pizza, Burgers, Sandwiches, Fried Chicken, Fries, Drinks, and Sweets.'\n"
-                "4. If they name a specific item, add it. If they ask about a category, show options.\n"
+                "3.  ask: 'What would you like to order [name]? We have Pizza, Burgers, Sandwiches, Fried Chicken, Fries, Drinks, and Sweets.'\n"
+                "4. Take their order (use bulk processing for multiple items, single for one item)\n"
                 "5. After main items, ask: 'Would you like any drinks?'\n"
-                "   - If they say specific drink, add it directly\n"
-                "   - If they say 'yes' or 'what do you have?', show drinks category\n"
                 "6. After drinks, ask: 'Any dessert or sweets?'\n"
-                "7. Summarize and confirm order\n\n"
+                "7. Summarize and confirm order and also ask if they want to add anything else if the say no. Politely ask to if want to confirm the order\n\n"
                 "If customer says they don't want to order or changes their mind:\n"
                 "- Politely acknowledge: 'No problem at all! Feel free to call us anytime you're ready to order.'\n"
                 "- Don't transfer them anywhere, just end the conversation gracefully\n\n"
@@ -239,6 +237,186 @@ class OrderAgent(BaseAgent):
             return f"Thank you! I've recorded your phone number. Now, what would you like to order?"
     
     @function_tool()
+    async def process_multiple_items(
+        self,
+        context: RunContext_T,
+        item1_name: Annotated[str, Field(description="First item name")],
+        item1_quantity: Annotated[int, Field(description="First item quantity")] = 1,
+        item2_name: Annotated[str, Field(description="Second item name (optional)")] = "",
+        item2_quantity: Annotated[int, Field(description="Second item quantity")] = 1,
+        item3_name: Annotated[str, Field(description="Third item name (optional)")] = "",
+        item3_quantity: Annotated[int, Field(description="Third item quantity")] = 1,
+        item4_name: Annotated[str, Field(description="Fourth item name (optional)")] = "",
+        item4_quantity: Annotated[int, Field(description="Fourth item quantity")] = 1,
+        item5_name: Annotated[str, Field(description="Fifth item name (optional)")] = "",
+        item5_quantity: Annotated[int, Field(description="Fifth item quantity")] = 1,
+        item6_name: Annotated[str, Field(description="Sixth item name (optional)")] = "",
+        item6_quantity: Annotated[int, Field(description="Sixth item quantity")] = 1,
+    ) -> str:
+        """
+        Process multiple items at once - search for all, report availability, and ask for confirmation.
+        
+        This function:
+        1. Searches for all items mentioned
+        2. Groups them into: available items and unavailable items
+        3. Returns a summary with total price for available items
+        4. Asks customer to confirm the available items
+        
+        Use this when customer lists multiple items in one sentence.
+        Fill in item1_name first, then item2_name if there's a second item, etc.
+        Leave item names empty if not needed.
+        """
+        # Collect all items into a list
+        items = []
+        if item1_name:
+            items.append({"name": item1_name, "quantity": item1_quantity})
+        if item2_name:
+            items.append({"name": item2_name, "quantity": item2_quantity})
+        if item3_name:
+            items.append({"name": item3_name, "quantity": item3_quantity})
+        if item4_name:
+            items.append({"name": item4_name, "quantity": item4_quantity})
+        if item5_name:
+            items.append({"name": item5_name, "quantity": item5_quantity})
+        if item6_name:
+            items.append({"name": item6_name, "quantity": item6_quantity})
+        
+        logger.info(f"🛒 Processing bulk order: {len(items)} items")
+        
+        available_items = []
+        unavailable_items = []
+        total_price = 0
+        
+        # Process each item
+        for item_request in items:
+            item_name = item_request.get('name', '')
+            quantity = item_request.get('quantity', 1)
+            
+            # Validate quantity
+            if quantity > MAX_QUANTITY_PER_ITEM:
+                unavailable_items.append({
+                    'name': item_name,
+                    'reason': f"quantity exceeds maximum of {MAX_QUANTITY_PER_ITEM}"
+                })
+                continue
+            
+            # Correct common STT errors
+            corrected_name = correct_menu_item_name(item_name)
+            
+            # Search for item
+            found_items = self.menu_service.search_items(corrected_name)
+            if not found_items and corrected_name != item_name:
+                found_items = self.menu_service.search_items(item_name)
+            
+            if found_items:
+                menu_item = found_items[0]
+                item_total = menu_item.price * quantity
+                available_items.append({
+                    'menu_item': menu_item,
+                    'quantity': quantity,
+                    'subtotal': item_total
+                })
+                total_price += item_total
+                logger.info(f"✅ Found: {menu_item.name} x{quantity} = Rs. {item_total}")
+            else:
+                unavailable_items.append({
+                    'name': item_name,
+                    'reason': 'not found on menu'
+                })
+                logger.warning(f"❌ Not found: {item_name}")
+        
+        # Build response
+        if not available_items and not unavailable_items:
+            return "I didn't catch any items. Could you please repeat your order?"
+        
+        # Store available items in context for confirmation
+        context.userdata.pending_bulk_order = available_items
+        
+        response_parts = []
+        
+        # List available items
+        if available_items:
+            response_parts.append("Great! Here's what I can add to your order:")
+            for item_info in available_items:
+                menu_item = item_info['menu_item']
+                qty = item_info['quantity']
+                subtotal = item_info['subtotal']
+                response_parts.append(f"• {qty}x {menu_item.name} - {subtotal:.0f} rupees")
+            
+            response_parts.append(f"\nTotal for these items: {total_price:.0f} rupees")
+        
+        # List unavailable items
+        if unavailable_items:
+            response_parts.append("\nUnfortunately, these items are not available:")
+            for unavail in unavailable_items:
+                response_parts.append(f"• {unavail['name']} ({unavail['reason']})")
+        
+        # Ask for confirmation if we have available items
+        if available_items:
+            response_parts.append("\nWould you like me to add these items to your order?")
+        else:
+            response_parts.append("\nWould you like to try something else from our menu?")
+        
+        return "\n".join(response_parts)
+    
+    @function_tool()
+    async def confirm_bulk_order(
+        self,
+        context: RunContext_T,
+    ) -> str:
+        """
+        Confirm and add all items from pending bulk order to the customer's cart.
+        Only call this after customer confirms the bulk order (says yes/okay/sure).
+        """
+        userdata = context.userdata
+        
+        if not hasattr(userdata, 'pending_bulk_order') or not userdata.pending_bulk_order:
+            return "There are no pending items to add. What would you like to order?"
+        
+        pending_items = userdata.pending_bulk_order
+        logger.info(f"✅ Confirming bulk order: {len(pending_items)} items")
+        
+        added_items = []
+        total_added = 0
+        
+        # Add all pending items to the order
+        for item_info in pending_items:
+            menu_item = item_info['menu_item']
+            quantity = item_info['quantity']
+            subtotal = item_info['subtotal']
+            
+            # Create order item
+            order_item = {
+                "item_id": menu_item.id,
+                "name": menu_item.name,
+                "quantity": quantity,
+                "price": menu_item.price,
+                "subtotal": subtotal,
+                "special_instructions": ""
+            }
+            
+            userdata.order_items.append(order_item)
+            userdata.total_amount += subtotal
+            added_items.append(f"{quantity}x {menu_item.name}")
+            total_added += subtotal
+            
+            logger.info(f"✅ Added: {quantity}x {menu_item.name} (Rs. {subtotal})")
+        
+        # Clear pending order
+        userdata.pending_bulk_order = []
+        
+        # Build confirmation response
+        items_summary = ", ".join(added_items)
+        response = (
+            f"Perfect! I've added {items_summary} to your order. "
+            f"That's {total_added:.0f} rupees. "
+            f"Your current total is {userdata.total_amount:.0f} rupees. "
+            f"Would you like anything else?"
+        )
+        
+        return response
+    
+    @function_tool()
     async def search_and_suggest_item(
         self,
         item_name: Annotated[str, Field(description="Name of the menu item customer mentioned")],
@@ -246,7 +424,8 @@ class OrderAgent(BaseAgent):
     ) -> str:
         """
         Search for an item and suggest it to the customer with price.
-        Use this when customer mentions a specific item name (not a category).
+        Use this when customer mentions a SINGLE item name (not multiple items at once).
+        For multiple items, use process_multiple_items instead.
         Returns confirmation prompt if found, or suggests related category if not found.
         """
         logger.info(f"🔍 Searching for item: '{item_name}'")
@@ -289,7 +468,38 @@ class OrderAgent(BaseAgent):
             else:
                 return f"Sorry, we don't have {item_name} on our menu. Would you like to hear about our Pizza, Burgers, Fried Chicken, or other items?"
         
-        # If multiple matches, show first one but mention there are more
+        # Check if customer specified a size already
+        query_lower = item_name.lower()
+        has_size_in_query = any(size in query_lower for size in ['small', 'medium', 'large', 'bucket'])
+        
+        # Check if multiple size variants exist
+        if len(items) > 1 and not has_size_in_query:
+            # Group by base name (without size prefix)
+            item_groups = {}
+            for item in items:
+                # Remove size prefix to get base name
+                base_name = item.name
+                for size_prefix in ['Small ', 'Medium ', 'Large ']:
+                    if base_name.startswith(size_prefix):
+                        base_name = base_name[len(size_prefix):]
+                        break
+                
+                if base_name not in item_groups:
+                    item_groups[base_name] = []
+                item_groups[base_name].append(item)
+            
+            # If we have multiple items with same base name, ask for size
+            for base_name, group_items in item_groups.items():
+                if len(group_items) > 1:
+                    logger.info(f"📏 Multiple sizes found for: {base_name}")
+                    size_options = []
+                    for item in group_items:
+                        size_options.append(f"{item.name} - {item.price:.0f} rupees")
+                    
+                    options_text = "\n".join(size_options)
+                    return f"We have different sizes available:\n{options_text}\n\nWhich size would you like?"
+        
+        # Single match or customer already specified size
         item = items[0]
         logger.info(f"✅ Found item: {item.name} (ID: {item.id}, Price: Rs. {item.price})")
         
