@@ -550,18 +550,19 @@ IMPORTANT: When customer asks about any category, ALWAYS use the show_category_i
         items = menu[category]
         category_name = category.replace('_', ' ').title()
         
-        # Build natural speech format without numbers
+        # Build natural speech format with pauses between items
         item_descriptions = []
         for item in items:
             item_descriptions.append(f"{item.name} for {item.price:.0f} rupees")
         
-        # Join items with commas and "and" for the last item
+        # Join items with pauses for better speech delivery
         if len(item_descriptions) == 1:
             items_text = item_descriptions[0]
         elif len(item_descriptions) == 2:
-            items_text = f"{item_descriptions[0]}, and {item_descriptions[1]}"
+            items_text = f"{item_descriptions[0]}... and {item_descriptions[1]}"
         else:
-            items_text = ", ".join(item_descriptions[:-1]) + f", and {item_descriptions[-1]}"
+            # Add pauses (...) between each item for natural speech rhythm
+            items_text = "... ".join(item_descriptions[:-1]) + f"... and {item_descriptions[-1]}"
         
         return f"For {category_name}, we have {items_text}."
     
