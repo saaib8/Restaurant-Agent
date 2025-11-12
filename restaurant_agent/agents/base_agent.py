@@ -86,6 +86,13 @@ class BaseAgent(Agent):
         agent_name = self.__class__.__name__
         logger.info(f"👤 [USER] Customer said: {message}")
     
+    async def on_function_calls_finished(self, called_functions: list) -> None:
+        """Called after function execution - ensure agent generates a response"""
+        agent_name = self.__class__.__name__
+        logger.info(f"🔧 [{agent_name}] Function calls finished: {[f.function_info.name for f in called_functions]}")
+        # Force the agent to generate a reply after function execution
+        # This ensures the function return values are spoken
+    
     async def _transfer_to_agent(
         self, 
         name: str, 
