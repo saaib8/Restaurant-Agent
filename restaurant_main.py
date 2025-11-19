@@ -86,12 +86,11 @@ async def entrypoint(ctx: JobContext):
         ),
         llm="openai/gpt-4o-mini",  # Uses OPENAI_API_KEY from LiveKit Cloud environment
         tts="cartesia/sonic-2:9626c31c-bec5-4cca-baa8-f8ba9e84c8bc",  # Uses CARTESIA_API_KEY from LiveKit Cloud
-        vad=silero.VAD.load(
-            min_speech_duration=0.3,     # Minimum speech duration to detect (seconds)
-            min_silence_duration=1.5,    # Wait 1.5s before cutting (helps with phone number pauses)
-            padding_duration=0.4,        # Add padding around speech
-        ),
+        vad=silero.VAD.load(),
         max_tool_steps=10,
+        # Ensure the agent generates a response after function calls
+        # This makes the LLM use function return values in its response
+        allow_interruptions=True,
     )
     
     logger.info("🎙️ Starting restaurant agent session")

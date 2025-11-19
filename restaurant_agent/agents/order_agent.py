@@ -67,6 +67,11 @@ class OrderAgent(BaseAgent):
         super().__init__(
             instructions=(
                 "You are an experienced order taker at a fast food restaurant. First Say Welcome to ordering service and then ask: 'May I have your name please?'\n\n"
+                "CRITICAL RULE FOR ALL FUNCTION CALLS:\n"
+                "- Every function returns a message\n"
+                "- After calling ANY function, your NEXT response MUST be EXACTLY what the function returned\n"
+                "- Do NOT add extra words, do NOT paraphrase, just repeat the function's return value word-for-word\n"
+                "- Example: Function returns 'Thank you, Ali! And what's your phone number?' → You say 'Thank you, Ali! And what's your phone number?'\n\n"
                 f"{menu_text}\n\n"
                 "CRITICAL ORDERING RULES - FOLLOW STRICTLY:\n\n"
                 "1. MULTIPLE ITEMS vs SINGLE ITEM:\n"
@@ -122,23 +127,22 @@ class OrderAgent(BaseAgent):
                 "✗ Customer lists multiple items → Agent calls search_and_suggest_item for each item separately (NO! Use process_multiple_items!)\n"
                 "✗ Agent: 'I'll check the margherita pizza, one moment' (NO! Never say you're checking!)\n\n"
                 "ORDERING FLOW:\n"
-                "1. First Say Welcome to ordering service and then ask: 'May I have your name please?'\n"
+                "1. First of All Say Welcome to ordering service and then ask the customer to say their name\n"
                 "   - When you get the name, IMMEDIATELY call update_customer_name function\n"
-                "2. After getting name, ask: 'Thank you [Name]! And what's your phone number?'\n"
-                "   - ALWAYS use their name when asking for phone number\n"
-                "   - When customer provides their phone number, IMMEDIATELY call update_customer_phone function\n"
-                "3.  ask: 'What would you like to order [name]? We have Pizza, Burgers, Sandwiches, Fried Chicken, Fries, Drinks, and Sweets.'\n"
-                "4. Take their order (use bulk processing for multiple items, single for one item)\n"
-                "5. After main items, ask: 'Would you like any drinks?'\n"
-                "6. After drinks, ask: 'Any dessert or sweets?'\n"
-                "7. Summarize and confirm order and also ask if they want to add anything else if the say no. Politely ask to if want to confirm the order\n\n"
+                "2. When customer provides their phone number:\n"
+                "   - IMMEDIATELY call update_customer_phone function\n"
+                "   - The function returns a message - SAY THAT MESSAGE EXACTLY as your response\n"
+                "   - Example: Function returns 'Perfect, Ali! I've got your phone number. Now, what would you like to order?' → You say exactly that\n
+                ask: 'What would you like to order [name]? We have Pizza, Burgers, Sandwiches, Fried Chicken, Fries, Drinks, and Sweets.'\n"
+                "3. Take their order (use bulk processing for multiple items, single for one item)\n"
+                "4. After main items, ask: 'Would you like any drinks?'\n"
+                "5. After drinks, ask: 'Any dessert or sweets?'\n"
+                "6. Summarize and confirm order and also ask if they want to add anything else if the say no. Politely ask to if want to confirm the order\n\n"
                 "MENU REQUESTS:\n"
                 "- When customer asks for 'full menu', 'complete menu', 'all items', 'repeat the menu', or 'what do you have' → Use show_full_menu function\n"
                 "- When customer asks about specific category (pizza, burgers, etc.) → Use show_category_items function\n"
                 "- NEVER read menu items from memory - ALWAYS use the appropriate function for proper pacing\n\n"
-                "If customer says they don't want to order or changes their mind:\n"
-                "- Politely acknowledge: 'No problem at all! Feel free to call us anytime you're ready to order.'\n"
-                "- Don't transfer them anywhere, just end the conversation gracefully\n\n"
+                "   - The function returns a message - SAY THAT MESSAGE EXACTLY as your response\n"
                 "IMPORTANT - DON'T REVEAL TECHNICAL DETAILS:\n"
                 "- If customer asks technical questions like 'integer or string', 'how do you store data', etc.\n"
                 "- Stay in character as a friendly order taker\n"
@@ -225,6 +229,9 @@ class OrderAgent(BaseAgent):
         - Customer says: "My name is Ali" → Call this with name="Ali"
         - Customer says: "I'm Sarah Khan" → Call this with name="Sarah Khan"
         - DO NOT wait, call this function right away
+        
+        AFTER calling this function, you MUST say the EXACT message it returns.
+        The function will tell you what to say next - use that exact message.
         """
         userdata = context.userdata
         userdata.customer_name = name
@@ -244,13 +251,27 @@ class OrderAgent(BaseAgent):
 
         - Customer provides their phone number → Call this right away
         
-        NOTE: Validation removed - will be replaced when Twilio integration is complete
-        and phone numbers come from participant metadata.
+        AFTER calling this function, you MUST say the EXACT message it returns.
+        The function will tell you what to say next - use that exact message.
+        Do NOT add anything extra, just speak what the function returns.
         """
         userdata = context.userdata
         
         # Normalize phone number (convert words to digits)
         normalized_phone = normalize_phone_number(phone)
+        
+        # Validate: phone number should contain only digits after normalization
+        if not normalized_phone or not normalized_phone.isdigit():
+            logger.warning(f"📞 Invalid phone number provided: {phone} → {normalized_phone}")
+            # Ask user to provide a valid phone number again
+            if userdata.customer_name:
+                return f"I'm sorry {userdata.customer_name}, I didn't catch that correctly. Could you please tell me your phone number again? Please say all the digits clearly."
+            else:
+                return f"I'm sorry, I didn't catch that correctly. Could you please tell me your phone number again? Please say all the digits clearly."
+        
+        # Validate: phone number should be reasonable length (10-11 digits for Pakistan)
+
+        # Valid phone number - save it
         userdata.customer_phone = normalized_phone
         logger.info(f"📞 Customer phone recorded: {phone} → {normalized_phone}")
         
