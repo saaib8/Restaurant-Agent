@@ -129,18 +129,20 @@ class OrderAgent(BaseAgent):
                 "ORDERING FLOW:\n"
                 "1. First of All Say Welcome to ordering service and then ask the customer to say their name\n"
                 "   - When you get the name, IMMEDIATELY call update_customer_name function\n"
-                "   - The function returns a message - SAY THAT MESSAGE EXACTLY as your response\n"
                 "2. When customer provides their phone number:\n"
                 "   - IMMEDIATELY call update_customer_phone function\n"
                 "   - The function returns a message - SAY THAT MESSAGE EXACTLY as your response\n"
-                "   - Example: Function returns 'Perfect, Ali! I've got your phone number. Now, what would you like to order?' → You say exactly that\n"
+                "   - Example: Function returns 'Perfect, Ali! I've got your phone number. Now, what would you like to order?' → You say exactly that\n
+                ask: 'What would you like to order [name]? We have Pizza, Burgers, Sandwiches, Fried Chicken, Fries, Drinks, and Sweets.'\n"
                 "3. Take their order (use bulk processing for multiple items, single for one item)\n"
                 "4. After main items, ask: 'Would you like any drinks?'\n"
                 "5. After drinks, ask: 'Any dessert or sweets?'\n"
-                "6. Summarize and confirm order and also ask if they want to add anything else if they say no. Politely ask if they want to confirm the order\n\n"
-                "If customer says they don't want to order or changes their mind:\n"
-                "- Politely acknowledge: 'No problem at all! Feel free to call us anytime you're ready to order.'\n"
-                "- Don't transfer them anywhere, just end the conversation gracefully\n\n"
+                "6. Summarize and confirm order and also ask if they want to add anything else if the say no. Politely ask to if want to confirm the order\n\n"
+                "MENU REQUESTS:\n"
+                "- When customer asks for 'full menu', 'complete menu', 'all items', 'repeat the menu', or 'what do you have' → Use show_full_menu function\n"
+                "- When customer asks about specific category (pizza, burgers, etc.) → Use show_category_items function\n"
+                "- NEVER read menu items from memory - ALWAYS use the appropriate function for proper pacing\n\n"
+                "   - The function returns a message - SAY THAT MESSAGE EXACTLY as your response\n"
                 "IMPORTANT - DON'T REVEAL TECHNICAL DETAILS:\n"
                 "- If customer asks technical questions like 'integer or string', 'how do you store data', etc.\n"
                 "- Stay in character as a friendly order taker\n"
@@ -157,6 +159,26 @@ class OrderAgent(BaseAgent):
         )
         self.menu_text = menu_text
         self.menu_service = MenuService()
+    
+    @function_tool()
+    async def show_full_menu(self, context: RunContext_T) -> str:
+        """
+        Show the complete menu with all categories and items.
+        Use this when customer asks for "the full menu", "complete menu", "all items", "repeat the menu", or "what do you have".
+        """
+        logger.info("📋 Showing full menu with paced delivery")
+        
+        categories = ["pizza", "burger", "sandwich", "fried_chicken", "fries", "drinks", "sweets"]
+        menu_sections = []
+        
+        for category in categories:
+            category_items = self.menu_service.get_category_description(category)
+            menu_sections.append(category_items)
+        
+        # Join sections with longer pauses between categories
+        full_menu = "... ... ".join(menu_sections)
+        
+        return f"Here's our complete menu: {full_menu}"
     
     @function_tool()
     async def show_category_items(
@@ -360,13 +382,23 @@ class OrderAgent(BaseAgent):
         # List available items
         if available_items:
             response_parts.append("Great! Here's what I can add to your order:")
+            item_list = []
             for item_info in available_items:
                 menu_item = item_info['menu_item']
                 qty = item_info['quantity']
                 subtotal = item_info['subtotal']
-                response_parts.append(f"• {qty}x {menu_item.name} - {subtotal:.0f} rupees")
+                item_list.append(f"{qty}x {menu_item.name} for {subtotal:.0f} rupees")
             
-            response_parts.append(f"\nTotal for these items: {total_price:.0f} rupees")
+            # Join with pauses for better speech delivery
+            if len(item_list) == 1:
+                items_text = item_list[0]
+            elif len(item_list) == 2:
+                items_text = f"{item_list[0]}... and {item_list[1]}"
+            else:
+                items_text = "... ".join(item_list[:-1]) + f"... and {item_list[-1]}"
+            
+            response_parts.append(items_text)
+            response_parts.append(f"Total for these items: {total_price:.0f} rupees")
         
         # List unavailable items
         if unavailable_items:
@@ -428,8 +460,14 @@ class OrderAgent(BaseAgent):
         # Clear pending order
         userdata.pending_bulk_order = []
         
-        # Build confirmation response
-        items_summary = ", ".join(added_items)
+        # Build confirmation response with pauses
+        if len(added_items) == 1:
+            items_summary = added_items[0]
+        elif len(added_items) == 2:
+            items_summary = f"{added_items[0]}... and {added_items[1]}"
+        else:
+            items_summary = "... ".join(added_items[:-1]) + f"... and {added_items[-1]}"
+        
         response = (
             f"Perfect! I've added {items_summary} to your order. "
             f"That's {total_added:.0f} rupees. "
