@@ -132,8 +132,8 @@ class OrderAgent(BaseAgent):
                 "2. When customer provides their phone number:\n"
                 "   - IMMEDIATELY call update_customer_phone function\n"
                 "   - The function returns a message - SAY THAT MESSAGE EXACTLY as your response\n"
-                "   - Example: Function returns 'Perfect, Ali! I've got your phone number. Now, what would you like to order?' → You say exactly that\n
-                ask: 'What would you like to order [name]? We have Pizza, Burgers, Sandwiches, Fried Chicken, Fries, Drinks, and Sweets.'\n"
+                "   - Example: Function returns 'Perfect, Ali! I've got your phone number. Now, what would you like to order?' → You say exactly that\n"
+                "   - ask: 'What would you like to order [name]? We have Pizza, Burgers, Sandwiches, Fried Chicken, Fries, Drinks, and Sweets.'\n"
                 "3. Take their order (use bulk processing for multiple items, single for one item)\n"
                 "4. After main items, ask: 'Would you like any drinks?'\n"
                 "5. After drinks, ask: 'Any dessert or sweets?'\n"
