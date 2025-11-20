@@ -19,7 +19,10 @@ MAX_QUANTITY_PER_ITEM = 20
 
 
 def normalize_phone_number(phone_str: str) -> str:
-    """Convert spoken phone number words to digits"""
+    """Convert spoken phone number words to digits and remove formatting characters"""
+    # First, remove common phone number formatting characters (hyphens, spaces, parentheses, dots)
+    phone_str = phone_str.replace('-', ' ').replace('(', '').replace(')', '').replace('.', ' ')
+    
     word_to_digit = {
         'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4',
         'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9',
@@ -54,6 +57,7 @@ def normalize_phone_number(phone_str: str) -> str:
     
     phone_number = ''.join(digits)
     
+    # Final cleanup: remove any remaining non-digit characters
     phone_number = re.sub(r'\D', '', phone_number)
     
     return phone_number
@@ -257,7 +261,7 @@ class OrderAgent(BaseAgent):
         """
         userdata = context.userdata
         
-        # Normalize phone number (convert words to digits)
+        # Normalize phone number (convert words to digits, remove hyphens and spaces)
         normalized_phone = normalize_phone_number(phone)
         
         # Validate: phone number should contain only digits after normalization

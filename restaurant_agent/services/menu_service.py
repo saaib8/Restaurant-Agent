@@ -507,7 +507,7 @@ class MenuService:
         for category, items in menu.items():
             text += f"{category.title()}:\n"
             for item in items:
-                text += f"{item.name} - {item.price:.0f} rupees\n"
+                text += f"{item.name}\n"
             text += "\n"
         
         return text
@@ -553,7 +553,7 @@ IMPORTANT: When customer asks about any category, ALWAYS use the show_category_i
         # Build natural speech format with pauses between items
         item_descriptions = []
         for item in items:
-            item_descriptions.append(f"{item.name} for {item.price:.0f} rupees")
+            item_descriptions.append(f"{item.name}")
         
         # Join items with pauses for better speech delivery
         if len(item_descriptions) == 1:
