@@ -612,7 +612,7 @@ class OrderAgent(BaseAgent):
         # Add to order
         order_item = {
             "item_id": item.id,
-            "item_name": item.name,
+            "name": item.name,
             "quantity": quantity,
             "price": item.price,
             "special_instructions": special_instructions or None,
@@ -645,11 +645,12 @@ class OrderAgent(BaseAgent):
         
         # Find and remove item
         for i, order_item in enumerate(userdata.order_items):
-            if item_name.lower() in order_item["item_name"].lower():
+            item_key = "name" if "name" in order_item else "item_name"
+            if item_name.lower() in order_item[item_key].lower():
                 removed = userdata.order_items.pop(i)
                 userdata.total_amount -= removed["subtotal"]
-                logger.info(f"➖ Removed {removed['item_name']} from order")
-                return f"Removed {removed['item_name']} from your order. New total: {userdata.total_amount:.0f} rupees"
+                logger.info(f"➖ Removed {removed[item_key]} from order")
+                return f"Removed {removed[item_key]} from your order. New total: {userdata.total_amount:.0f} rupees"
         
         return f"I don't see {item_name} in your current order. Would you like me to review what's in your order?"
     
@@ -666,7 +667,8 @@ class OrderAgent(BaseAgent):
         
         summary = "Here's your current order:\n\n"
         for item in userdata.order_items:
-            summary += f"{item['quantity']}x {item['item_name']} - {item['subtotal']:.0f} rupees\n"
+            item_name = item.get('name', item.get('item_name', 'Unknown Item'))
+            summary += f"{item['quantity']}x {item_name} - {item['subtotal']:.0f} rupees\n"
             if item.get('special_instructions'):
                 summary += f"  Note: {item['special_instructions']}\n"
         
