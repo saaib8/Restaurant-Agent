@@ -26,7 +26,7 @@ from livekit.agents.voice import AgentSession
 from livekit.agents.voice.room_io import RoomInputOptions
 from livekit.plugins import silero, noise_cancellation, openai
 
-from restaurant_agent.agents import GreeterAgent, OrderAgent
+from restaurant_agent.agents import GreeterAgent, OrderAgent, ReservationAgent
 from restaurant_agent.agents.base_agent import UserData
 from restaurant_agent.services import MenuService, MongoDB
 from restaurant_agent.config.settings import settings
@@ -61,11 +61,13 @@ async def entrypoint(ctx: JobContext):
     # Create agents
     greeter = GreeterAgent(menu_text=menu_summary)
     order_agent = OrderAgent(menu_text=menu_summary)
+    reservation_agent = ReservationAgent()
     
     # Register agents
     userdata.agents = {
         "greeter": greeter,
         "order": order_agent,
+        "reservation": reservation_agent,
     }
     
     # TODO: Extract phone number from LiveKit participant metadata

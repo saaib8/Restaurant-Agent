@@ -19,6 +19,7 @@ class Settings:
     # Collections
     CUSTOMERS_COLLECTION: str = "customers"
     ORDERS_COLLECTION: str = "orders"
+    RESERVATIONS_COLLECTION: str = "reservations"
     
     # LiveKit Configuration
     LIVEKIT_URL: str = os.getenv("LIVEKIT_URL", "")

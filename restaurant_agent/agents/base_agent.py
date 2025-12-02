@@ -27,6 +27,12 @@ class UserData:
     # Bulk order processing
     pending_bulk_order: list[dict] = field(default_factory=list)
     
+    # Reservation data
+    reservation_date: Optional[str] = None
+    reservation_time: Optional[str] = None
+    party_size: Optional[int] = None
+    pending_reservation: Optional[dict] = None
+    
     # Agent management
     agents: dict[str, Agent] = field(default_factory=dict)
     prev_agent: Optional[Agent] = None
@@ -39,6 +45,15 @@ class UserData:
             "order_items": self.order_items or [],
             "total_amount": f"Rs. {self.total_amount:.0f}" if self.total_amount else "Rs. 0",
         }
+        
+        # Add reservation data if present
+        if self.reservation_date or self.reservation_time or self.party_size:
+            data["reservation"] = {
+                "date": self.reservation_date or "not set",
+                "time": self.reservation_time or "not set",
+                "party_size": self.party_size or "not set",
+            }
+        
         return yaml.dump(data, default_flow_style=False)
 
 

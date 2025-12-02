@@ -325,7 +325,7 @@ class MenuService:
                 ),
                 MenuItem(
                     id=41,
-                    name="7UP",
+                    name="Seven Up",
                     price=99.0,
                     category="drinks",
                     description="Lemon-lime soda"
